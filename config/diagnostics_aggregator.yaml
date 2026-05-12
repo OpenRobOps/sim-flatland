@@ -1,0 +1,20 @@
+# Groups DiagnosticStatus entries from /diagnostics into a tree on
+# /diagnostics_agg. The top-level node name passed to the aggregator
+# node ('analyzers') must match the root key here.
+analyzers:
+  ros__parameters:
+    pub_rate: 1.0
+    base_path: ""
+    analyzers:
+      sensors:
+        type: diagnostic_aggregator/GenericAnalyzer
+        path: Sensors
+        contains: ["scan", "odom", "tf"]
+      power:
+        type: diagnostic_aggregator/GenericAnalyzer
+        path: Power
+        contains: ["battery"]
+      navigation:
+        type: diagnostic_aggregator/GenericAnalyzer
+        path: Navigation
+        contains: ["cmd_vel", "nav2"]
