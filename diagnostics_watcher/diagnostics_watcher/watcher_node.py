@@ -9,12 +9,12 @@ from rclpy.duration import Duration
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from diagnostic_updater import Updater
 
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import BatteryState, LaserScan
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from diagnostic_msgs.msg import DiagnosticStatus
 
-from .status_logic import classify_freshness
+from .status_logic import classify_battery, classify_freshness
 
 
 def _best_effort_qos(depth: int = 10) -> QoSProfile:
@@ -63,6 +63,8 @@ class DiagnosticsWatcher(Node):
         self._scan_timestamps: deque = deque()
         self._last_odom = None
         self._last_cmd_vel = None
+        self._last_battery_ts = None
+        self._last_battery_percentage: Optional[float] = None
 
         # --- Subscriptions --------------------------------------------------
         # BestEffort QoS tolerates publishers using either reliability setting
@@ -87,6 +89,12 @@ class DiagnosticsWatcher(Node):
             self._on_cmd_vel,
             10,
         )
+        self.create_subscription(
+            BatteryState,
+            self.get_parameter('battery_topic').value,
+            self._on_battery,
+            10,
+        )
 
         # --- Diagnostic updater --------------------------------------------
         self._updater = Updater(self)
@@ -96,6 +104,7 @@ class DiagnosticsWatcher(Node):
         self._updater.add('scan_freshness', self._diag_scan)
         self._updater.add('odom_freshness', self._diag_odom)
         self._updater.add('cmd_vel_freshness', self._diag_cmd_vel)
+        self._updater.add('battery', self._diag_battery)
 
         period = 1.0 / float(self.get_parameter('update_rate_hz').value)
         self.create_timer(period, self._tick)
@@ -114,6 +123,10 @@ class DiagnosticsWatcher(Node):
 
     def _on_cmd_vel(self, _msg):
         self._last_cmd_vel = self.get_clock().now()
+
+    def _on_battery(self, msg: BatteryState):
+        self._last_battery_ts = self.get_clock().now()
+        self._last_battery_percentage = float(msg.percentage)
 
     # --- Helpers ------------------------------------------------------------
     def _tick(self):
@@ -161,6 +174,18 @@ class DiagnosticsWatcher(Node):
         # idle when no goal is active.
         if level == DiagnosticStatus.ERROR:
             level = DiagnosticStatus.WARN
+        stat.summary(level, msg)
+        return stat
+
+    def _diag_battery(self, stat):
+        level, msg = classify_battery(
+            self._last_battery_percentage,
+            self._age_sec(self._last_battery_ts),
+            float(self.get_parameter('battery_stale_sec').value),
+            float(self.get_parameter('battery_warn_soc').value),
+            float(self.get_parameter('battery_critical_soc').value),
+            self._grace_active(),
+        )
         stat.summary(level, msg)
         return stat
 
