@@ -18,6 +18,15 @@ from lifecycle_msgs.srv import GetState
 
 from .status_logic import classify_battery, classify_freshness
 
+# Maps DiagnosticStatus byte levels to a severity rank for aggregation.
+# STALE ranks just above OK (it's a "no data" signal, not worse than ERROR).
+_LEVEL_RANK = {
+    DiagnosticStatus.OK: 0,
+    DiagnosticStatus.STALE: 1,
+    DiagnosticStatus.WARN: 2,
+    DiagnosticStatus.ERROR: 3,
+}
+
 
 def _best_effort_qos(depth: int = 10) -> QoSProfile:
     return QoSProfile(
@@ -112,6 +121,7 @@ class DiagnosticsWatcher(Node):
         self._lifecycle_state = {
             name: (DiagnosticStatus.STALE, 'not yet polled') for name in self._nav2_nodes
         }
+        self._lifecycle_pending: set = set()
         self.create_timer(2.0, self._poll_lifecycle)
 
         # --- Diagnostic updater --------------------------------------------
@@ -243,12 +253,16 @@ class DiagnosticsWatcher(Node):
             if not client.service_is_ready():
                 self._lifecycle_state[name] = (DiagnosticStatus.WARN, 'service unavailable')
                 continue
+            if name in self._lifecycle_pending:
+                # Previous call still in flight — skip this tick to avoid pile-up.
+                continue
+            self._lifecycle_pending.add(name)
             future = client.call_async(GetState.Request())
-            # Don't block the executor; check completion via done callback.
             future.add_done_callback(
                 lambda fut, n=name: self._on_lifecycle_response(n, fut))
 
     def _on_lifecycle_response(self, name, future):
+        self._lifecycle_pending.discard(name)
         try:
             result = future.result()
         except Exception as ex:  # noqa: BLE001 - record and continue
@@ -273,7 +287,7 @@ class DiagnosticsWatcher(Node):
         for name, (level, label) in self._lifecycle_state.items():
             stat.add(name, label)
             details.append(f'{name}={label}')
-            if level > worst:
+            if _LEVEL_RANK.get(level, 0) > _LEVEL_RANK.get(worst, 0):
                 worst = level
 
         # Escalate "all services unreachable" after grace to ERROR.
