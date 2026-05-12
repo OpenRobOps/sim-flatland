@@ -9,7 +9,7 @@ def classify_freshness(
     age_sec: Optional[float],
     stale_sec: float,
     grace_active: bool,
-) -> Tuple[int, str]:
+) -> Tuple[bytes, str]:
     """Classify how fresh a topic is.
 
     age_sec: seconds since the last message, or None if never received.
@@ -33,8 +33,18 @@ def classify_battery(
     warn_soc: float,
     critical_soc: float,
     grace_active: bool,
-) -> Tuple[int, str]:
-    """Classify battery health from latest BatteryState.percentage (0.0..1.0)."""
+) -> Tuple[bytes, str]:
+    """Classify battery health from the latest BatteryState.
+
+    percentage: latest BatteryState.percentage in [0.0, 1.0], or None if no
+        message has been received.
+    age_sec: seconds since the last battery message, or None if no message
+        has been received.
+    stale_sec: age threshold beyond which the battery message is stale.
+    warn_soc / critical_soc: thresholds (in [0.0, 1.0]) for WARN and ERROR.
+    grace_active: True during the startup grace window — downgrades
+        missing/stale conditions from ERROR to STALE to avoid bringup noise.
+    """
     if percentage is None or age_sec is None:
         level = DiagnosticStatus.STALE if grace_active else DiagnosticStatus.ERROR
         return level, "no battery message received"

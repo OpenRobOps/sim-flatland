@@ -1,4 +1,3 @@
-import pytest
 from diagnostic_msgs.msg import DiagnosticStatus
 
 from diagnostics_watcher.status_logic import (
@@ -30,6 +29,10 @@ class TestClassifyFreshness:
         assert level == DiagnosticStatus.ERROR
         assert "2.00" in msg
 
+    def test_at_stale_boundary_is_ok(self):
+        level, _ = classify_freshness(age_sec=2.0, stale_sec=2.0, grace_active=False)
+        assert level == DiagnosticStatus.OK
+
 
 class TestClassifyBattery:
     def test_no_message_within_grace_is_stale(self):
@@ -52,6 +55,20 @@ class TestClassifyBattery:
             stale_sec=5.0, warn_soc=0.2, critical_soc=0.05, grace_active=False,
         )
         assert level == DiagnosticStatus.ERROR
+
+    def test_stale_message_within_grace_is_stale(self):
+        level, _ = classify_battery(
+            percentage=0.8, age_sec=10.0,
+            stale_sec=5.0, warn_soc=0.2, critical_soc=0.05, grace_active=True,
+        )
+        assert level == DiagnosticStatus.STALE
+
+    def test_at_stale_boundary_is_ok(self):
+        level, _ = classify_battery(
+            percentage=0.8, age_sec=5.0,
+            stale_sec=5.0, warn_soc=0.2, critical_soc=0.05, grace_active=False,
+        )
+        assert level == DiagnosticStatus.OK
 
     def test_critical_soc_is_error(self):
         level, msg = classify_battery(
