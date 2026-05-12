@@ -14,6 +14,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from diagnostic_msgs.msg import DiagnosticStatus
 from tf2_ros import Buffer, TransformListener, TransformException
+from lifecycle_msgs.srv import GetState
 
 from .status_logic import classify_battery, classify_freshness
 
@@ -101,6 +102,18 @@ class DiagnosticsWatcher(Node):
         self._tf_buffer = Buffer(node=self)
         self._tf_listener = TransformListener(self._tf_buffer, self)
 
+        # --- Nav2 lifecycle polling ----------------------------------------
+        self._nav2_nodes = list(self.get_parameter('nav2_nodes').value)
+        self._lifecycle_clients = {
+            name: self.create_client(GetState, f'/{name}/get_state')
+            for name in self._nav2_nodes
+        }
+        # name -> (level, label) cached from the most recent poll
+        self._lifecycle_state = {
+            name: (DiagnosticStatus.STALE, 'not yet polled') for name in self._nav2_nodes
+        }
+        self.create_timer(2.0, self._poll_lifecycle)
+
         # --- Diagnostic updater --------------------------------------------
         self._updater = Updater(self)
         self._updater.setHardwareID('flatland_sim')
@@ -111,6 +124,7 @@ class DiagnosticsWatcher(Node):
         self._updater.add('cmd_vel_freshness', self._diag_cmd_vel)
         self._updater.add('battery', self._diag_battery)
         self._updater.add('tf_map_to_base_link', self._diag_tf)
+        self._updater.add('nav2_lifecycle', self._diag_nav2_lifecycle)
 
         period = 1.0 / float(self.get_parameter('update_rate_hz').value)
         self.create_timer(period, self._tick)
@@ -222,6 +236,54 @@ class DiagnosticsWatcher(Node):
             )
         else:
             stat.summary(DiagnosticStatus.OK, f'map->base_link fresh ({age_sec:.2f}s)')
+        return stat
+
+    def _poll_lifecycle(self):
+        for name, client in self._lifecycle_clients.items():
+            if not client.service_is_ready():
+                self._lifecycle_state[name] = (DiagnosticStatus.WARN, 'service unavailable')
+                continue
+            future = client.call_async(GetState.Request())
+            # Don't block the executor; check completion via done callback.
+            future.add_done_callback(
+                lambda fut, n=name: self._on_lifecycle_response(n, fut))
+
+    def _on_lifecycle_response(self, name, future):
+        try:
+            result = future.result()
+        except Exception as ex:  # noqa: BLE001 - record and continue
+            self._lifecycle_state[name] = (DiagnosticStatus.WARN, f'call failed: {ex}')
+            return
+        if result is None:
+            self._lifecycle_state[name] = (DiagnosticStatus.WARN, 'no response')
+            return
+        label = result.current_state.label  # e.g. "active", "inactive"
+        if label == 'active':
+            self._lifecycle_state[name] = (DiagnosticStatus.OK, label)
+        else:
+            self._lifecycle_state[name] = (DiagnosticStatus.ERROR, label)
+
+    def _diag_nav2_lifecycle(self, stat):
+        worst = DiagnosticStatus.OK
+        details = []
+        all_unreachable = bool(self._lifecycle_state) and all(
+            label == 'service unavailable'
+            for _, label in self._lifecycle_state.values()
+        )
+        for name, (level, label) in self._lifecycle_state.items():
+            stat.add(name, label)
+            details.append(f'{name}={label}')
+            if level > worst:
+                worst = level
+
+        # Escalate "all services unreachable" after grace to ERROR.
+        if all_unreachable and not self._grace_active():
+            worst = DiagnosticStatus.ERROR
+
+        if worst == DiagnosticStatus.OK:
+            stat.summary(DiagnosticStatus.OK, 'all Nav2 nodes active')
+        else:
+            stat.summary(worst, '; '.join(details))
         return stat
 
 
