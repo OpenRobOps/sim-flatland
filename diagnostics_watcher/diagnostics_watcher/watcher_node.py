@@ -13,6 +13,7 @@ from sensor_msgs.msg import BatteryState, LaserScan
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from diagnostic_msgs.msg import DiagnosticStatus
+from tf2_ros import Buffer, TransformListener, TransformException
 
 from .status_logic import classify_battery, classify_freshness
 
@@ -96,6 +97,10 @@ class DiagnosticsWatcher(Node):
             10,
         )
 
+        # --- TF listener for map -> base_link ------------------------------
+        self._tf_buffer = Buffer()
+        self._tf_listener = TransformListener(self._tf_buffer, self)
+
         # --- Diagnostic updater --------------------------------------------
         self._updater = Updater(self)
         self._updater.setHardwareID('flatland_sim')
@@ -105,6 +110,7 @@ class DiagnosticsWatcher(Node):
         self._updater.add('odom_freshness', self._diag_odom)
         self._updater.add('cmd_vel_freshness', self._diag_cmd_vel)
         self._updater.add('battery', self._diag_battery)
+        self._updater.add('tf_map_to_base_link', self._diag_tf)
 
         period = 1.0 / float(self.get_parameter('update_rate_hz').value)
         self.create_timer(period, self._tick)
@@ -187,6 +193,29 @@ class DiagnosticsWatcher(Node):
             self._grace_active(),
         )
         stat.summary(level, msg)
+        return stat
+
+    def _diag_tf(self, stat):
+        stale_sec = float(self.get_parameter('tf_stale_sec').value)
+        try:
+            tf = self._tf_buffer.lookup_transform(
+                'map', 'base_link', rclpy.time.Time())
+        except TransformException as ex:
+            if self._grace_active():
+                stat.summary(DiagnosticStatus.STALE, f'no map->base_link yet: {ex}')
+            else:
+                stat.summary(DiagnosticStatus.ERROR, f'map->base_link lookup failed: {ex}')
+            return stat
+
+        stamp = rclpy.time.Time.from_msg(tf.header.stamp)
+        age_sec = (self.get_clock().now() - stamp).nanoseconds / 1e9
+        if age_sec > stale_sec:
+            stat.summary(
+                DiagnosticStatus.ERROR,
+                f'map->base_link stale ({age_sec:.2f}s, threshold {stale_sec:.2f}s)',
+            )
+        else:
+            stat.summary(DiagnosticStatus.OK, f'map->base_link fresh ({age_sec:.2f}s)')
         return stat
 
 
