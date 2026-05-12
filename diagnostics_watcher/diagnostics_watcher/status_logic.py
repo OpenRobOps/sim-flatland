@@ -1,5 +1,6 @@
 """Pure status-classification helpers. No ROS state — easy to unit-test."""
 
+import math
 from typing import Optional, Tuple
 
 from diagnostic_msgs.msg import DiagnosticStatus
@@ -48,6 +49,9 @@ def classify_battery(
     if percentage is None or age_sec is None:
         level = DiagnosticStatus.STALE if grace_active else DiagnosticStatus.ERROR
         return level, "no battery message received"
+    if math.isnan(percentage):
+        level = DiagnosticStatus.STALE if grace_active else DiagnosticStatus.WARN
+        return level, "battery percentage unknown (NaN)"
     if age_sec > stale_sec:
         level = DiagnosticStatus.STALE if grace_active else DiagnosticStatus.ERROR
         return level, f"battery message stale ({age_sec:.2f}s, threshold {stale_sec:.2f}s)"

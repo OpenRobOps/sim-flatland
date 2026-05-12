@@ -107,3 +107,18 @@ class TestClassifyBattery:
         )
         assert level == DiagnosticStatus.OK
         assert "85" in msg
+
+    def test_nan_percentage_after_grace_is_warn(self):
+        level, msg = classify_battery(
+            percentage=float('nan'), age_sec=0.5,
+            stale_sec=5.0, warn_soc=0.2, critical_soc=0.05, grace_active=False,
+        )
+        assert level == DiagnosticStatus.WARN
+        assert "nan" in msg.lower()
+
+    def test_nan_percentage_within_grace_is_stale(self):
+        level, _ = classify_battery(
+            percentage=float('nan'), age_sec=0.5,
+            stale_sec=5.0, warn_soc=0.2, critical_soc=0.05, grace_active=True,
+        )
+        assert level == DiagnosticStatus.STALE
