@@ -157,6 +157,27 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time}],
     )
 
+    # Diagnostics watcher node — publishes /diagnostics for sim health
+    diagnostics_watcher = Node(
+        package='diagnostics_watcher',
+        executable='watcher',
+        name='diagnostics_watcher',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
+    )
+
+    # Aggregator — republishes /diagnostics_agg grouped by Sensors/Power/Navigation
+    diagnostics_aggregator = Node(
+        package='diagnostic_aggregator',
+        executable='aggregator_node',
+        name='analyzers',
+        output='screen',
+        parameters=[
+            os.path.join(bringup_dir, 'config', 'diagnostics_aggregator.yaml'),
+            {'use_sim_time': use_sim_time},
+        ],
+    )
+
     # Lifecycle manager for navigation nodes
     lifecycle_manager_navigation = Node(
         package='nav2_lifecycle_manager',
@@ -209,5 +230,7 @@ def generate_launch_description():
         smoother_server,
         lifecycle_manager_navigation,
         republisher,
+        diagnostics_watcher,
+        diagnostics_aggregator,
         rviz_node,
     ])
