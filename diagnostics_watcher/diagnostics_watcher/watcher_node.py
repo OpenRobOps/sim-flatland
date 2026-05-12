@@ -1,5 +1,6 @@
 """ROS 2 diagnostics watcher: publishes /diagnostics for sim health."""
 
+from collections import deque
 from typing import Optional
 
 import rclpy
@@ -59,10 +60,15 @@ class DiagnosticsWatcher(Node):
 
         # --- Last-seen timestamps ------------------------------------------
         self._last_scan = None
+        self._scan_timestamps: deque = deque()
         self._last_odom = None
         self._last_cmd_vel = None
 
         # --- Subscriptions --------------------------------------------------
+        # BestEffort QoS tolerates publishers using either reliability setting
+        # (a BestEffort subscriber can still receive from a Reliable publisher).
+        # Flatland's current /scan publisher is Reliable; this keeps the
+        # subscription forward-compatible if that changes.
         self.create_subscription(
             LaserScan,
             self.get_parameter('scan_topic').value,
@@ -96,7 +102,12 @@ class DiagnosticsWatcher(Node):
 
     # --- Subscription callbacks ---------------------------------------------
     def _on_scan(self, _msg):
-        self._last_scan = self.get_clock().now()
+        now = self.get_clock().now()
+        self._last_scan = now
+        self._scan_timestamps.append(now)
+        window = Duration(seconds=1.0)
+        while self._scan_timestamps and (now - self._scan_timestamps[0]) > window:
+            self._scan_timestamps.popleft()
 
     def _on_odom(self, _msg):
         self._last_odom = self.get_clock().now()
@@ -122,8 +133,12 @@ class DiagnosticsWatcher(Node):
         level, msg = classify_freshness(
             self._age_sec(self._last_scan),
             float(self.get_parameter('scan_stale_sec').value),
-            self._grace_active() and self._last_scan is None,
+            self._grace_active(),
         )
+        # WARN if rate dropped below 5 Hz over the last 1 s window.
+        if level == DiagnosticStatus.OK and len(self._scan_timestamps) < 5:
+            level = DiagnosticStatus.WARN
+            msg = f'low scan rate: {len(self._scan_timestamps)} msg/s (< 5 Hz)'
         stat.summary(level, msg)
         return stat
 
@@ -131,7 +146,7 @@ class DiagnosticsWatcher(Node):
         level, msg = classify_freshness(
             self._age_sec(self._last_odom),
             float(self.get_parameter('odom_stale_sec').value),
-            self._grace_active() and self._last_odom is None,
+            self._grace_active(),
         )
         stat.summary(level, msg)
         return stat
@@ -140,7 +155,7 @@ class DiagnosticsWatcher(Node):
         level, msg = classify_freshness(
             self._age_sec(self._last_cmd_vel),
             float(self.get_parameter('cmd_vel_stale_sec').value),
-            self._grace_active() and self._last_cmd_vel is None,
+            self._grace_active(),
         )
         # cmd_vel never escalates beyond WARN — the robot is legitimately
         # idle when no goal is active.
