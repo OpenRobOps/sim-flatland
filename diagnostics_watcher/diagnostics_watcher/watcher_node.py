@@ -98,7 +98,7 @@ class DiagnosticsWatcher(Node):
         )
 
         # --- TF listener for map -> base_link ------------------------------
-        self._tf_buffer = Buffer()
+        self._tf_buffer = Buffer(node=self)
         self._tf_listener = TransformListener(self._tf_buffer, self)
 
         # --- Diagnostic updater --------------------------------------------
@@ -209,7 +209,13 @@ class DiagnosticsWatcher(Node):
 
         stamp = rclpy.time.Time.from_msg(tf.header.stamp)
         age_sec = (self.get_clock().now() - stamp).nanoseconds / 1e9
-        if age_sec > stale_sec:
+        if age_sec < 0:
+            stat.summary(
+                DiagnosticStatus.WARN,
+                f'map->base_link stamp is in the future ({age_sec:.2f}s) — '
+                f'possible clock mismatch (check use_sim_time on broadcasters)',
+            )
+        elif age_sec > stale_sec:
             stat.summary(
                 DiagnosticStatus.ERROR,
                 f'map->base_link stale ({age_sec:.2f}s, threshold {stale_sec:.2f}s)',
