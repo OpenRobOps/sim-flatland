@@ -1,10 +1,27 @@
 """ROS 2 diagnostics watcher: publishes /diagnostics for sim health."""
 
-from diagnostic_updater import Updater
+from typing import Optional
 
 import rclpy
-from rclpy.duration import Duration
 from rclpy.node import Node
+from rclpy.duration import Duration
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+from diagnostic_updater import Updater
+
+from sensor_msgs.msg import LaserScan
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Twist
+from diagnostic_msgs.msg import DiagnosticStatus
+
+from .status_logic import classify_freshness
+
+
+def _best_effort_qos(depth: int = 10) -> QoSProfile:
+    return QoSProfile(
+        depth=depth,
+        reliability=ReliabilityPolicy.BEST_EFFORT,
+        history=HistoryPolicy.KEEP_LAST,
+    )
 
 
 class DiagnosticsWatcher(Node):
@@ -40,17 +57,54 @@ class DiagnosticsWatcher(Node):
         self._startup_grace = float(self.get_parameter('startup_grace_sec').value)
         self._started_at = self.get_clock().now()
 
+        # --- Last-seen timestamps ------------------------------------------
+        self._last_scan = None
+        self._last_odom = None
+        self._last_cmd_vel = None
+
+        # --- Subscriptions --------------------------------------------------
+        self.create_subscription(
+            LaserScan,
+            self.get_parameter('scan_topic').value,
+            self._on_scan,
+            _best_effort_qos(),
+        )
+        self.create_subscription(
+            Odometry,
+            self.get_parameter('odom_topic').value,
+            self._on_odom,
+            10,
+        )
+        self.create_subscription(
+            Twist,
+            self.get_parameter('cmd_vel_topic').value,
+            self._on_cmd_vel,
+            10,
+        )
+
         # --- Diagnostic updater --------------------------------------------
         self._updater = Updater(self)
         self._updater.setHardwareID('flatland_sim')
         # Cancel the Updater's built-in 1 Hz timer; we drive it explicitly below.
         self._updater.timer.cancel()
+        self._updater.add('scan_freshness', self._diag_scan)
+        self._updater.add('odom_freshness', self._diag_odom)
+        self._updater.add('cmd_vel_freshness', self._diag_cmd_vel)
+
         period = 1.0 / float(self.get_parameter('update_rate_hz').value)
-        self._updater.add('placeholder', self._noop_diag)
-        # `period` is enforced via the timer below; Updater's setPeriod is
-        # available but we prefer an explicit ROS timer so use_sim_time works.
         self.create_timer(period, self._tick)
 
+    # --- Subscription callbacks ---------------------------------------------
+    def _on_scan(self, _msg):
+        self._last_scan = self.get_clock().now()
+
+    def _on_odom(self, _msg):
+        self._last_odom = self.get_clock().now()
+
+    def _on_cmd_vel(self, _msg):
+        self._last_cmd_vel = self.get_clock().now()
+
+    # --- Helpers ------------------------------------------------------------
     def _tick(self):
         self._updater.force_update()
 
@@ -58,9 +112,41 @@ class DiagnosticsWatcher(Node):
         age = self.get_clock().now() - self._started_at
         return age < Duration(seconds=self._startup_grace)
 
-    def _noop_diag(self, stat):
-        # Replaced in Task 4 — keeps Updater happy until then.
-        stat.summary(0, 'watcher up')
+    def _age_sec(self, ts) -> Optional[float]:
+        if ts is None:
+            return None
+        return (self.get_clock().now() - ts).nanoseconds / 1e9
+
+    # --- Diagnostic tasks ---------------------------------------------------
+    def _diag_scan(self, stat):
+        level, msg = classify_freshness(
+            self._age_sec(self._last_scan),
+            float(self.get_parameter('scan_stale_sec').value),
+            self._grace_active() and self._last_scan is None,
+        )
+        stat.summary(level, msg)
+        return stat
+
+    def _diag_odom(self, stat):
+        level, msg = classify_freshness(
+            self._age_sec(self._last_odom),
+            float(self.get_parameter('odom_stale_sec').value),
+            self._grace_active() and self._last_odom is None,
+        )
+        stat.summary(level, msg)
+        return stat
+
+    def _diag_cmd_vel(self, stat):
+        level, msg = classify_freshness(
+            self._age_sec(self._last_cmd_vel),
+            float(self.get_parameter('cmd_vel_stale_sec').value),
+            self._grace_active() and self._last_cmd_vel is None,
+        )
+        # cmd_vel never escalates beyond WARN — the robot is legitimately
+        # idle when no goal is active.
+        if level == DiagnosticStatus.ERROR:
+            level = DiagnosticStatus.WARN
+        stat.summary(level, msg)
         return stat
 
 
