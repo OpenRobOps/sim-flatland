@@ -43,6 +43,8 @@ class DiagnosticsWatcher(Node):
         # --- Diagnostic updater --------------------------------------------
         self._updater = Updater(self)
         self._updater.setHardwareID('flatland_sim')
+        # Cancel the Updater's built-in 1 Hz timer; we drive it explicitly below.
+        self._updater.timer.cancel()
         period = 1.0 / float(self.get_parameter('update_rate_hz').value)
         self._updater.add('placeholder', self._noop_diag)
         # `period` is enforced via the timer below; Updater's setPeriod is
