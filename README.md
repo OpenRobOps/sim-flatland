@@ -10,6 +10,7 @@ Docker environment for running the [avidbots/flatland](https://github.com/avidbo
 - **Rviz2** - Visualization with preconfigured layout
 - **Battery Simulation** - Velocity-based battery drain plugin with `sensor_msgs/BatteryState` output
 - **ROS2 Agent** - Connects the simulated robot to OpenRobOps (runs in a sidecar container, optional)
+- **ROS Diagnostics** - Health monitoring of sensors, battery, TF, and Nav2 lifecycle published on `/diagnostics` and grouped on `/diagnostics_agg`
 - **Sample world** - 20x20m multi-room office with a differential-drive robot (laser, odometry, battery)
 
 ![Demo of Flatland Nav2](demo.gif)
@@ -228,6 +229,56 @@ The agent is opt-out. To skip both the agent and its log tail:
 COMPOSE_PROFILES= docker compose up
 ```
 
+## Diagnostics
+
+A `diagnostics_watcher` node publishes ROS 2 diagnostics on `/diagnostics`, and a `diagnostic_aggregator` groups them into a tree on `/diagnostics_agg`. Both are launched by default with the rest of the simulation.
+
+### What is monitored
+
+| Check | Trigger |
+|-------|---------|
+| `scan_freshness` | `/scan` not received for > 2 s (ERROR), or rate < 5 Hz (WARN) |
+| `odom_freshness` | `/odom` not received for > 1 s (ERROR) |
+| `tf_map_to_base_link` | `map → base_link` lookup fails or stamp > 2 s old (ERROR) |
+| `battery` | SOC ≤ 5% or message stale > 5 s (ERROR); SOC ≤ 20% (WARN); NaN percentage (WARN) |
+| `cmd_vel_freshness` | `/cmd_vel` not received for > 5 s (WARN only — the robot is idle when no goal is active) |
+| `nav2_lifecycle` | Any of `map_server`, `amcl`, `controller_server`, `planner_server`, `bt_navigator` not in state `active` (ERROR) |
+
+During the first 5 s after the watcher starts, missing-message conditions report `STALE` instead of `ERROR` to avoid noise during bringup.
+
+### Topics
+
+| Topic | Type | Source |
+|-------|------|--------|
+| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | `diagnostics_watcher` |
+| `/diagnostics_agg` | `diagnostic_msgs/DiagnosticArray` | `diagnostic_aggregator` (grouped: Sensors / Power / Navigation) |
+| `/diagnostics_toplevel_state` | `diagnostic_msgs/DiagnosticStatus` | `diagnostic_aggregator` (single overall status) |
+
+### Viewing diagnostics
+
+```bash
+# One-shot snapshot of the grouped tree
+docker compose exec flatland-nav2 ros2 topic echo /diagnostics_agg --once
+
+# Live GUI tree (requires X11/Wayland forwarding)
+docker compose exec flatland-nav2 ros2 run rqt_robot_monitor rqt_robot_monitor
+```
+
+### Tuning thresholds
+
+All thresholds and topic names are ROS parameters on the `diagnostics_watcher` node. Override them at launch time, e.g.:
+
+```bash
+ros2 param set /diagnostics_watcher scan_stale_sec 5.0
+ros2 param set /diagnostics_watcher battery_warn_soc 0.30
+```
+
+The full list (`scan_stale_sec`, `odom_stale_sec`, `cmd_vel_stale_sec`, `battery_stale_sec`, `tf_stale_sec`, `battery_warn_soc`, `battery_critical_soc`, `nav2_nodes`, `update_rate_hz`, `startup_grace_sec`) lives in `diagnostics_watcher/diagnostics_watcher/watcher_node.py`.
+
+### Disabling
+
+Comment out the `diagnostics_watcher` and `diagnostics_aggregator` `Node` entries (plus their references in the returned `LaunchDescription`) in `launch/flatland_nav2.launch.py`.
+
 ## File Structure
 
 ```
@@ -239,11 +290,14 @@ flatland/
   config/
     nav2_params.yaml                # Nav2 parameters (DWB controller, NavFn planner)
     flatland_rviz.rviz              # Rviz2 layout (map, scan, TF, costmaps, Nav2 panel, battery)
+    diagnostics_aggregator.yaml     # Analyzer groups for diagnostic_aggregator
   launch/
     flatland_nav2.launch.py         # Unified launch file
   plugins/
     battery.h                       # Battery simulation plugin header
     battery.cpp                     # Battery simulation plugin implementation
+  republisher/                      # Project ROS2 package - InOrbit custom_data bridge
+  diagnostics_watcher/              # Project ROS2 package - /diagnostics publisher
   maps/
     sample_map.yaml                 # Map metadata
     sample_map.pgm                  # 20x20m multi-room office occupancy grid
@@ -325,6 +379,9 @@ Key topics published by the simulation:
 | `/charging_zones` | `visualization_msgs/MarkerArray` | Battery plugin (zone circles and labels for rviz) |
 | `/local_costmap/published_footprint` | `geometry_msgs/PolygonStamped` | Nav2 costmap (robot footprint) |
 | `/inorbit/custom_data` | `std_msgs/String` | Republisher node (`battery_percentage`, `battery_voltage`, `estimated_time_remaining` as `key=value`) |
+| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | `diagnostics_watcher` node |
+| `/diagnostics_agg` | `diagnostic_msgs/DiagnosticArray` | `diagnostic_aggregator` (grouped tree) |
+| `/diagnostics_toplevel_state` | `diagnostic_msgs/DiagnosticStatus` | `diagnostic_aggregator` (overall status) |
 
 ### Sending a navigation goal
 
