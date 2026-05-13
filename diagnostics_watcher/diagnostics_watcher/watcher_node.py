@@ -4,6 +4,7 @@ from collections import deque
 from typing import Optional
 
 import rclpy
+import rclpy.time
 from rclpy.node import Node
 from rclpy.duration import Duration
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
@@ -122,6 +123,7 @@ class DiagnosticsWatcher(Node):
             name: (DiagnosticStatus.STALE, 'not yet polled') for name in self._nav2_nodes
         }
         self._lifecycle_pending: set = set()
+        self._lifecycle_timers: dict = {}
         self.create_timer(2.0, self._poll_lifecycle)
 
         # --- Diagnostic updater --------------------------------------------
@@ -179,9 +181,12 @@ class DiagnosticsWatcher(Node):
             self._grace_active(),
         )
         # WARN if rate dropped below 5 Hz over the last 1 s window.
-        if level == DiagnosticStatus.OK and len(self._scan_timestamps) < 5:
+        # Skipped during grace — the deque hasn't had time to fill.
+        if (level == DiagnosticStatus.OK
+                and not self._grace_active()
+                and len(self._scan_timestamps) < 5):
             level = DiagnosticStatus.WARN
-            msg = f'low scan rate: {len(self._scan_timestamps)} msg/s (< 5 Hz)'
+            msg = f'low scan rate: {len(self._scan_timestamps)} msgs/s (< 5 Hz)'
         stat.summary(level, msg)
         return stat
 
@@ -260,9 +265,16 @@ class DiagnosticsWatcher(Node):
             future = client.call_async(GetState.Request())
             future.add_done_callback(
                 lambda fut, n=name: self._on_lifecycle_response(n, fut))
+            # Per-call timeout: if no response in 0.5 s, mark WARN and cancel.
+            timeout_timer = self.create_timer(
+                0.5, lambda f=future, n=name: self._on_lifecycle_timeout(n, f))
+            self._lifecycle_timers[name] = timeout_timer
 
     def _on_lifecycle_response(self, name, future):
         self._lifecycle_pending.discard(name)
+        timer = self._lifecycle_timers.pop(name, None)
+        if timer is not None:
+            timer.cancel()
         try:
             result = future.result()
         except Exception as ex:  # noqa: BLE001 - record and continue
@@ -277,12 +289,29 @@ class DiagnosticsWatcher(Node):
         else:
             self._lifecycle_state[name] = (DiagnosticStatus.ERROR, label)
 
+    def _on_lifecycle_timeout(self, name, future):
+        # Always cancel this one-shot timer first.
+        timer = self._lifecycle_timers.pop(name, None)
+        if timer is not None:
+            timer.cancel()
+        if future.done():
+            return  # response arrived before the timeout fired
+        future.cancel()
+        self._lifecycle_pending.discard(name)
+        self._lifecycle_state[name] = (DiagnosticStatus.WARN, 'call timed out (0.5s)')
+
     def _diag_nav2_lifecycle(self, stat):
         worst = DiagnosticStatus.OK
         details = []
-        all_unreachable = bool(self._lifecycle_state) and all(
-            label == 'service unavailable'
-            for _, label in self._lifecycle_state.values()
+        # "All unreachable" = no node has reported its state successfully.
+        # Excludes the still-initial 'not yet polled' state so this only
+        # escalates after polling has actually occurred.
+        non_initial = [
+            (level, label) for level, label in self._lifecycle_state.values()
+            if label != 'not yet polled'
+        ]
+        all_unreachable = bool(non_initial) and all(
+            level != DiagnosticStatus.OK for level, _ in non_initial
         )
         for name, (level, label) in self._lifecycle_state.items():
             stat.add(name, label)
