@@ -206,6 +206,11 @@ spec:
         chroma: true
         grid: 8
         height: 1
+    - type: diagnostics
+      label: Diagnostics
+      layout:
+        chroma: true
+        height: 1
 ---
 apiVersion: v0.1
 kind: DashboardDefinition
