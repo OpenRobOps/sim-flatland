@@ -314,7 +314,10 @@ void Camera::BeforePhysicsStep(const Timekeeper &timekeeper) {
   if (publish_compressed_) {
     sensor_msgs::msg::CompressedImage cmsg;
     cmsg.header = image_msg_.header;
-    cmsg.format = "jpeg";
+    // image_transport compressed-subscriber convention: the prefix is the
+    // source image encoding (matches image_msg_.encoding), so consumers
+    // reconstruct the right channel order after JPEG decode.
+    cmsg.format = "rgb8; jpeg compressed";
     // OpenCV expects BGR for JPEG; the in-memory frame is RGB, so convert.
     cv::Mat bgr;
     cv::cvtColor(frame_, bgr, cv::COLOR_RGB2BGR);
