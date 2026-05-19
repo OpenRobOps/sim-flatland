@@ -1,0 +1,27 @@
+From 414d414387216bb0af5146cc6bf3326060b8d27c Mon Sep 17 00:00:00 2001
+From: Hernan <herchu@gmail.com>
+Date: Tue, 19 May 2026 15:26:13 -0300
+Subject: [PATCH 15/15] flatland_plugins: register camera plugin class
+ (project-specific)
+
+Register flatland_plugins::Camera with pluginlib so the simulation can
+spawn it via plugin type at runtime.
+---
+ flatland_plugins/plugin_description.xml | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/flatland_plugins/plugin_description.xml b/flatland_plugins/plugin_description.xml
+index b7365de..a879798 100644
+--- a/flatland_plugins/plugin_description.xml
++++ b/flatland_plugins/plugin_description.xml
+@@ -29,4 +29,7 @@
+   <class type="flatland_plugins::Battery" base_class_type="flatland_server::ModelPlugin">
+     <description>Battery simulation plugin</description>
+   </class>
++  <class type="flatland_plugins::Camera" base_class_type="flatland_server::ModelPlugin">
++    <description>Wolfenstein-style raycasted camera plugin</description>
++  </class>
+ </library>
+-- 
+2.43.0
+

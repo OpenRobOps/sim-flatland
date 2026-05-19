@@ -1,7 +1,7 @@
-From 79cc02256c9465dfe20a2b2a65ad2faf11eec50e Mon Sep 17 00:00:00 2001
+From a9a39d16c71f2ef7968f6c4550e8f890e0a40404 Mon Sep 17 00:00:00 2001
 From: Flatland Patcher <patcher@openrobops.local>
 Date: Mon, 20 Apr 2026 08:57:30 -0300
-Subject: [PATCH 09/12] Fix plugin_description.xml library path for Jazzy
+Subject: [PATCH 09/15] Fix plugin_description.xml library path for Jazzy
  pluginlib
 
 Jazzy's pluginlib resolves library paths relative to the install

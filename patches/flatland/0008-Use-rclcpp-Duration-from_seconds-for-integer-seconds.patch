@@ -1,7 +1,7 @@
-From 5139433192550c4525fdbe0a9e2d8c9247c18e7e Mon Sep 17 00:00:00 2001
+From bfbdd3cd98e32cdbcedb63282cb15b4c8604a46b Mon Sep 17 00:00:00 2001
 From: Flatland Patcher <patcher@openrobops.local>
 Date: Mon, 20 Apr 2026 08:57:23 -0300
-Subject: [PATCH 08/12] Use rclcpp::Duration::from_seconds for integer-seconds
+Subject: [PATCH 08/15] Use rclcpp::Duration::from_seconds for integer-seconds
  durations
 
 Jazzy's rclcpp::Duration(int) constructor now takes nanoseconds

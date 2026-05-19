@@ -60,3 +60,7 @@ plugins:
   - type: ModelTfPublisher
     name: tf_publisher
     publish_tf_world: false
+
+  - type: Camera
+    name: front_camera
+    body: base_link

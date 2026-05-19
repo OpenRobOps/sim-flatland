@@ -1,7 +1,7 @@
-From c46d4f6a2b3ab7e977e2cd1d9073c303f81eab5b Mon Sep 17 00:00:00 2001
+From b18eba835d260d42c07dd371b451592a65c7d618 Mon Sep 17 00:00:00 2001
 From: Flatland Patcher <patcher@openrobops.local>
 Date: Mon, 20 Apr 2026 08:56:29 -0300
-Subject: [PATCH 04/12] Replace deprecated CV_LOAD_IMAGE_GRAYSCALE with
+Subject: [PATCH 04/15] Replace deprecated CV_LOAD_IMAGE_GRAYSCALE with
  cv::IMREAD_GRAYSCALE
 
 CV_LOAD_IMAGE_GRAYSCALE was removed in OpenCV 4.x. Ubuntu 24.04

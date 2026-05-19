@@ -1,7 +1,7 @@
-From eb320a811fabad359cf9c32ea32943150c1134d3 Mon Sep 17 00:00:00 2001
+From 3f03f21d127de46ef95c797437ffc35f4e25f7dc Mon Sep 17 00:00:00 2001
 From: Flatland Patcher <patcher@openrobops.local>
 Date: Mon, 20 Apr 2026 08:56:57 -0300
-Subject: [PATCH 06/12] Add explicit types and defaults to declare_parameter
+Subject: [PATCH 06/15] Add explicit types and defaults to declare_parameter
  for Jazzy
 
 rclcpp in Jazzy requires declare_parameter calls to provide either

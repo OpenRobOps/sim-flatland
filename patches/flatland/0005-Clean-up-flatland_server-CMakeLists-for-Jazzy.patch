@@ -1,7 +1,7 @@
-From ac3f7a417df952a45065c18f8b27a16efc13e585 Mon Sep 17 00:00:00 2001
+From 7c550002d05c2da69631d6a7e4e61a7c173b8e97 Mon Sep 17 00:00:00 2001
 From: Flatland Patcher <patcher@openrobops.local>
 Date: Mon, 20 Apr 2026 08:56:37 -0300
-Subject: [PATCH 05/12] Clean up flatland_server CMakeLists for Jazzy
+Subject: [PATCH 05/15] Clean up flatland_server CMakeLists for Jazzy
 
 - Move ament_package() to end of file (must come after all
   install() calls under ament_cmake >= rolling/jazzy).

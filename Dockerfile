@@ -49,9 +49,11 @@ RUN cd /ros2_ws/src/flatland && \
     done && \
     rm -rf /tmp/patches
 
-# Copy project-owned battery plugin sources (the patches only register them)
+# Copy project-owned plugin sources (the patches only register them)
 COPY plugins/battery.h /ros2_ws/src/flatland/flatland_plugins/include/flatland_plugins/
 COPY plugins/battery.cpp /ros2_ws/src/flatland/flatland_plugins/src/
+COPY plugins/camera.h /ros2_ws/src/flatland/flatland_plugins/include/flatland_plugins/
+COPY plugins/camera.cpp /ros2_ws/src/flatland/flatland_plugins/src/
 
 # Copy project-owned republisher package
 COPY republisher/ /ros2_ws/src/republisher/

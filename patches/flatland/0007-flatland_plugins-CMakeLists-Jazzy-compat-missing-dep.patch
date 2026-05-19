@@ -1,7 +1,7 @@
-From 138756d667b6856421c70de0c5c9c5c85f3dd1ab Mon Sep 17 00:00:00 2001
+From 88b766fa3a41d5a9b70e2fd6b12627e0896401d7 Mon Sep 17 00:00:00 2001
 From: Flatland Patcher <patcher@openrobops.local>
 Date: Mon, 20 Apr 2026 08:57:21 -0300
-Subject: [PATCH 07/12] flatland_plugins: CMakeLists Jazzy compat + missing
+Subject: [PATCH 07/15] flatland_plugins: CMakeLists Jazzy compat + missing
  deps
 
 Several fixes to let flatland_plugins build against ROS2 Jazzy and
