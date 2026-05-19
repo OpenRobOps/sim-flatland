@@ -9,24 +9,27 @@
 #include <opencv2/core.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <Eigen/Dense>
+#include <thirdparty/ThreadPool.h>
+#include <Box2D/Box2D.h>
 #include <cstdint>
 #include <string>
+#include <thread>
 #include <unordered_set>
-
-class b2Body;
-
-namespace flatland_server {
-class Body;
-}
+#include <vector>
 
 namespace flatland_plugins {
 
 class Camera : public flatland_server::ModelPlugin {
  public:
+  Camera() : pool_(std::thread::hardware_concurrency() + 1) {}
+
   void OnInitialize(const YAML::Node &config) override;
   void BeforePhysicsStep(const flatland_server::Timekeeper &timekeeper) override;
 
  private:
+  friend struct CameraRayCb;
+
   void ParseParameters(const YAML::Node &config);
 
   // Config
@@ -60,6 +63,17 @@ class Camera : public flatland_server::ModelPlugin {
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_pub_;
   cv::Mat frame_;
   sensor_msgs::msg::Image image_msg_;
+
+  // Precomputed per-column ray data (camera frame).
+  std::vector<float> ray_dir_cam_x_;
+  std::vector<float> ray_dir_cam_y_;
+  std::vector<float> cos_correction_;
+  float focal_y_;
+
+  // Cached transform body→camera (3x3 in homogeneous coords, matching laser.cpp).
+  Eigen::Matrix3f m_body_to_camera_;
+
+  ThreadPool pool_;
 };
 
 }  // namespace flatland_plugins
