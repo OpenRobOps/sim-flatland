@@ -3,7 +3,6 @@
 #include <flatland_server/yaml_reader.h>
 #include <boost/algorithm/string/join.hpp>
 #include <pluginlib/class_list_macros.hpp>
-#include <stdexcept>
 
 using namespace flatland_server;
 
