@@ -210,12 +210,28 @@ The robot includes a synthetic forward-facing camera that renders a Wolfenstein
 3D-style image of the 2D world using one Box2D raycast per image column.
 The image is depth-shaded, with a solid sky and floor split at the horizon.
 
-View the image with `rqt_image_view /image_raw` (recommended — works on all
-GL configurations). An `rviz_default_plugins/Image` display is **not** added
-to the default rviz layout: that display's render-to-texture path crashes
-rviz on some OpenGL/OGRE setups commonly seen in containerized environments.
-To try it in rviz anyway, click *Add* → *By topic* → `/image_raw` → *Image*
-in a running rviz session; if rviz survives, you can save the layout.
+### Viewing the image
+
+The camera publishes to ROS topics regardless of whether anyone is watching;
+to see the rendered frame in a window, run `rqt_image_view` from inside the
+container. As with rviz, the host must first authorize X access:
+
+```bash
+# On the host (once per login session — same step rviz needs)
+xhost +local:docker
+
+# In another terminal, with `docker compose up` already running
+docker compose exec flatland-nav2 bash -lc '
+  source /opt/ros/jazzy/setup.bash &&
+  source /ros2_ws/install/setup.bash &&
+  ros2 run rqt_image_view rqt_image_view /image_raw'
+```
+
+An `rviz_default_plugins/Image` display is **not** added to the default rviz
+layout: that display's render-to-texture path crashes rviz on some OpenGL /
+OGRE setups commonly seen in containerized environments. To try it in rviz
+anyway, click *Add* → *By topic* → `/image_raw` → *Image* in a running rviz
+session; if rviz survives, save the layout.
 
 ### Configuration
 
@@ -262,7 +278,8 @@ docker compose exec flatland-nav2 ros2 topic echo /image_raw --field width    --
 docker compose exec flatland-nav2 ros2 topic echo /image_raw --field height   --once  # 240
 docker compose exec flatland-nav2 ros2 topic echo /image_raw --field encoding --once  # rgb8
 
-# Drive the robot toward a wall and watch walls grow / brighten in rviz
+# Open rqt_image_view (see "Viewing the image" above) and drive the robot
+# toward a wall — walls grow and brighten as you approach.
 ```
 
 ## InOrbit Agent
