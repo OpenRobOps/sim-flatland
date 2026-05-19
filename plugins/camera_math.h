@@ -52,7 +52,9 @@ inline ColumnSpan ColumnGeometry(float dist, float focal_y, float wall_height,
 }
 
 // Shade a wall column. `n_dot` is |dot(ray_dir_world, hit_normal)|: 1=head-on,
-// 0=grazing. Pass a negative `n_dot` to disable directional shading.
+// 0=grazing. Only grazing-angle hits (`n_dot < 0.5`) are dimmed by `directional`.
+// Pass a negative `n_dot` to skip the grazing check entirely (e.g. degenerate
+// normals where the dot product is meaningless).
 inline Rgb ShadeColor(float dist, float range, float n_dot, float shade_min,
                      float shade_max, float directional, Rgb fog) {
   float t = std::clamp(dist / range, 0.0f, 1.0f);
