@@ -99,6 +99,21 @@ int main() {
     std::cout << "test_fisheye_cosines_symmetric: OK\n";
   }
 
+  // 9. extreme eye_height vs wall_height combos clamp to image bounds —
+  //    regression guard against heap-overrun in the column fill loop.
+  {
+    // eye_height = 2.0, wall_height = 1.0: horizon shifts far below center
+    // for close walls, which used to push `top` past H.
+    ColumnSpan span_high = ColumnGeometry(0.5f, focal_y, 1.0f, 2.0f, H);
+    assert(span_high.top    >= 0 && span_high.top    <= H);
+    assert(span_high.bottom >= 0 && span_high.bottom <= H);
+    // And the inverted case — very low eye should also stay in-bounds.
+    ColumnSpan span_low = ColumnGeometry(0.5f, focal_y, 1.0f, -1.0f, H);
+    assert(span_low.top    >= 0 && span_low.top    <= H);
+    assert(span_low.bottom >= 0 && span_low.bottom <= H);
+    std::cout << "test_column_clamps_to_image_bounds: OK\n";
+  }
+
   std::cout << "All camera_math tests passed.\n";
   return 0;
 }

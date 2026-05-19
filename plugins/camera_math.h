@@ -45,9 +45,13 @@ inline ColumnSpan ColumnGeometry(float dist, float focal_y, float wall_height,
                             static_cast<float>(image_height));
   float horizon = static_cast<float>(image_height) / 2.0f +
                   (eye_height - wall_height / 2.0f) * focal_y / dist;
-  int top = std::max(0, static_cast<int>(horizon - column_h / 2.0f));
-  int bottom = std::min(image_height,
-                        static_cast<int>(horizon + column_h / 2.0f));
+  // Clamp both ends against both bounds. Without this, large eye_height vs
+  // wall_height ratios can push `top` past image_height (or `bottom` below 0),
+  // and the rendering loop in camera.cpp would write outside the cv::Mat.
+  int top = std::clamp(static_cast<int>(horizon - column_h / 2.0f),
+                       0, image_height);
+  int bottom = std::clamp(static_cast<int>(horizon + column_h / 2.0f),
+                          0, image_height);
   return {top, bottom};
 }
 
