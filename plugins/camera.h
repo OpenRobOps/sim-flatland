@@ -6,7 +6,9 @@
 #include <flatland_server/model_plugin.h>
 #include <flatland_server/timekeeper.h>
 #include <flatland_server/types.h>
+#include <opencv2/core.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/image.hpp>
 #include <cstdint>
 #include <string>
 #include <unordered_set>
@@ -55,6 +57,9 @@ class Camera : public flatland_server::ModelPlugin {
   flatland_server::Body *body_;
   std::unordered_set<b2Body *> self_b2bodies_;
   UpdateTimer update_timer_;
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_pub_;
+  cv::Mat frame_;
+  sensor_msgs::msg::Image image_msg_;
 };
 
 }  // namespace flatland_plugins

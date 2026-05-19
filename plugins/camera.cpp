@@ -99,11 +99,30 @@ void Camera::OnInitialize(const YAML::Node &config) {
       GetName().c_str(), width_, height_, fov_deg_, range_, update_rate_,
       topic_.c_str(), frame_id_.c_str(), broadcast_tf_, publish_camera_info_,
       publish_compressed_);
+
+  image_pub_ = node_->create_publisher<sensor_msgs::msg::Image>(topic_, 1);
+
+  frame_ = cv::Mat(height_, width_, CV_8UC3, cv::Scalar(0, 0, 0));
+
+  image_msg_.height = height_;
+  image_msg_.width = width_;
+  image_msg_.encoding = "rgb8";
+  image_msg_.is_bigendian = 0;
+  image_msg_.step = width_ * 3;
+  image_msg_.header.frame_id = GetModel()->NameSpaceTF(frame_id_);
 }
 
 void Camera::BeforePhysicsStep(const Timekeeper &timekeeper) {
   if (!update_timer_.CheckUpdate(timekeeper)) return;
-  // Rendering & publishing in Task 4 / 5 / 6.
+  if (image_pub_->get_subscription_count() == 0) return;
+
+  // Solid floor_color fill — sanity check, real rendering in Task 5.
+  frame_.setTo(cv::Scalar(floor_color_.r, floor_color_.g, floor_color_.b));
+
+  image_msg_.data.assign(
+      frame_.data, frame_.data + (image_msg_.step * image_msg_.height));
+  image_msg_.header.stamp = timekeeper.GetSimTime();
+  image_pub_->publish(image_msg_);
 }
 
 }  // namespace flatland_plugins
