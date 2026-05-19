@@ -7,8 +7,12 @@
 #include <flatland_server/timekeeper.h>
 #include <flatland_server/types.h>
 #include <opencv2/core.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
+#include <sensor_msgs/msg/compressed_image.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <tf2_ros/transform_broadcaster.h>
 #include <Eigen/Dense>
 #include <thirdparty/ThreadPool.h>
 #include <Box2D/Box2D.h>
@@ -61,8 +65,13 @@ class Camera : public flatland_server::ModelPlugin {
   std::unordered_set<b2Body *> self_b2bodies_;
   UpdateTimer update_timer_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr compressed_pub_;
   cv::Mat frame_;
   sensor_msgs::msg::Image image_msg_;
+  sensor_msgs::msg::CameraInfo camera_info_msg_;
+  std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+  geometry_msgs::msg::TransformStamped camera_tf_;
 
   // Precomputed per-column ray data (camera frame).
   std::vector<float> ray_dir_cam_x_;

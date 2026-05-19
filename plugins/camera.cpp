@@ -2,7 +2,10 @@
 #include <flatland_server/exceptions.h>
 #include <flatland_server/yaml_reader.h>
 #include <boost/algorithm/string/join.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 #include <pluginlib/class_list_macros.hpp>
+#include <tf2/LinearMath/Quaternion.h>
 
 using namespace flatland_server;
 
@@ -163,11 +166,57 @@ void Camera::OnInitialize(const YAML::Node &config) {
   image_msg_.is_bigendian = 0;
   image_msg_.step = static_cast<uint32_t>(frame_.step);
   image_msg_.header.frame_id = GetModel()->NameSpaceTF(frame_id_);
+
+  if (publish_camera_info_) {
+    camera_info_pub_ = node_->create_publisher<sensor_msgs::msg::CameraInfo>(
+        topic_ + "/camera_info", 1);
+    camera_info_msg_.header.frame_id = image_msg_.header.frame_id;
+    camera_info_msg_.height = height_;
+    camera_info_msg_.width  = width_;
+    camera_info_msg_.distortion_model = "plumb_bob";
+    camera_info_msg_.d.assign(5, 0.0);
+    camera_info_msg_.k = {focal_y_, 0.0f, width_ / 2.0f,
+                          0.0f, focal_y_, height_ / 2.0f,
+                          0.0f, 0.0f, 1.0f};
+    camera_info_msg_.r = {1, 0, 0, 0, 1, 0, 0, 0, 1};
+    camera_info_msg_.p = {focal_y_, 0.0f, width_ / 2.0f, 0.0f,
+                          0.0f, focal_y_, height_ / 2.0f, 0.0f,
+                          0.0f, 0.0f, 1.0f, 0.0f};
+  }
+
+  if (publish_compressed_) {
+    compressed_pub_ = node_->create_publisher<sensor_msgs::msg::CompressedImage>(
+        topic_ + "/compressed", 1);
+  }
+
+  if (broadcast_tf_) {
+    tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
+    tf2::Quaternion q;
+    q.setRPY(0, 0, origin_.theta);
+    camera_tf_.header.frame_id = GetModel()->NameSpaceTF(body_->GetName());
+    camera_tf_.child_frame_id  = image_msg_.header.frame_id;
+    camera_tf_.transform.translation.x = origin_.x;
+    camera_tf_.transform.translation.y = origin_.y;
+    camera_tf_.transform.translation.z = 0;
+    camera_tf_.transform.rotation.x = q.x();
+    camera_tf_.transform.rotation.y = q.y();
+    camera_tf_.transform.rotation.z = q.z();
+    camera_tf_.transform.rotation.w = q.w();
+  }
 }
 
 void Camera::BeforePhysicsStep(const Timekeeper &timekeeper) {
   if (!update_timer_.CheckUpdate(timekeeper)) return;
-  if (image_pub_->get_subscription_count() == 0) return;
+  size_t subs = image_pub_->get_subscription_count();
+  if (publish_camera_info_) subs += camera_info_pub_->get_subscription_count();
+  if (publish_compressed_)  subs += compressed_pub_->get_subscription_count();
+  if (subs == 0) {
+    if (broadcast_tf_) {
+      camera_tf_.header.stamp = timekeeper.GetSimTime();
+      tf_broadcaster_->sendTransform(camera_tf_);
+    }
+    return;
+  }
 
   // World→camera transform.
   const b2Transform &t = body_->GetPhysicsBody()->GetTransform();
@@ -256,6 +305,33 @@ void Camera::BeforePhysicsStep(const Timekeeper &timekeeper) {
       frame_.data + frame_.step * static_cast<size_t>(image_msg_.height));
   image_msg_.header.stamp = timekeeper.GetSimTime();
   image_pub_->publish(image_msg_);
+
+  if (publish_camera_info_) {
+    camera_info_msg_.header.stamp = image_msg_.header.stamp;
+    camera_info_pub_->publish(camera_info_msg_);
+  }
+
+  if (publish_compressed_) {
+    sensor_msgs::msg::CompressedImage cmsg;
+    cmsg.header = image_msg_.header;
+    cmsg.format = "jpeg";
+    // OpenCV expects BGR for JPEG; the in-memory frame is RGB, so convert.
+    cv::Mat bgr;
+    cv::cvtColor(frame_, bgr, cv::COLOR_RGB2BGR);
+    std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, jpeg_quality_};
+    if (!cv::imencode(".jpg", bgr, cmsg.data, params)) {
+      RCLCPP_WARN_THROTTLE(rclcpp::get_logger("CameraPlugin"),
+                           *node_->get_clock(), 1000,
+                           "cv::imencode(.jpg) failed; skipping compressed frame");
+    } else {
+      compressed_pub_->publish(cmsg);
+    }
+  }
+
+  if (broadcast_tf_) {
+    camera_tf_.header.stamp = image_msg_.header.stamp;
+    tf_broadcaster_->sendTransform(camera_tf_);
+  }
 }
 
 }  // namespace flatland_plugins
