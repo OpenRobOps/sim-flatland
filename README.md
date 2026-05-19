@@ -210,8 +210,12 @@ The robot includes a synthetic forward-facing camera that renders a Wolfenstein
 3D-style image of the 2D world using one Box2D raycast per image column.
 The image is depth-shaded, with a solid sky and floor split at the horizon.
 
-The image is visible in rviz by default (the "Camera Image" display, pre-subscribed
-to `/image_raw`) and can also be viewed with `rqt_image_view /image_raw`.
+View the image with `rqt_image_view /image_raw` (recommended — works on all
+GL configurations). An `rviz_default_plugins/Image` display is **not** added
+to the default rviz layout: that display's render-to-texture path crashes
+rviz on some OpenGL/OGRE setups commonly seen in containerized environments.
+To try it in rviz anyway, click *Add* → *By topic* → `/image_raw` → *Image*
+in a running rviz session; if rviz survives, you can save the layout.
 
 ### Configuration
 
