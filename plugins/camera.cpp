@@ -108,7 +108,7 @@ void Camera::OnInitialize(const YAML::Node &config) {
   image_msg_.width = width_;
   image_msg_.encoding = "rgb8";
   image_msg_.is_bigendian = 0;
-  image_msg_.step = width_ * 3;
+  image_msg_.step = static_cast<uint32_t>(frame_.step);
   image_msg_.header.frame_id = GetModel()->NameSpaceTF(frame_id_);
 }
 
@@ -120,7 +120,8 @@ void Camera::BeforePhysicsStep(const Timekeeper &timekeeper) {
   frame_.setTo(cv::Scalar(floor_color_.r, floor_color_.g, floor_color_.b));
 
   image_msg_.data.assign(
-      frame_.data, frame_.data + (image_msg_.step * image_msg_.height));
+      frame_.data,
+      frame_.data + frame_.step * static_cast<size_t>(image_msg_.height));
   image_msg_.header.stamp = timekeeper.GetSimTime();
   image_pub_->publish(image_msg_);
 }
