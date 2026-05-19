@@ -204,6 +204,63 @@ ros2 topic pub --once /inorbit/custom_command std_msgs/msg/String '{data: "dock"
 ros2 topic pub --once /inorbit/custom_command std_msgs/msg/String '{data: "dock=A"}'
 ```
 
+## Camera Simulation
+
+The robot includes a synthetic forward-facing camera that renders a Wolfenstein
+3D-style image of the 2D world using one Box2D raycast per image column.
+The image is depth-shaded, with a solid sky and floor split at the horizon.
+
+The image is visible in rviz by default (the "Camera Image" display, pre-subscribed
+to `/image_raw`) and can also be viewed with `rqt_image_view /image_raw`.
+
+### Configuration
+
+Parameters in `worlds/turtlebot.model.yaml` (all optional — defaults shown):
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `width` | 320 | Image width in pixels |
+| `height` | 240 | Image height in pixels |
+| `fov_deg` | 90.0 | Horizontal field of view (degrees) |
+| `range` | 8.0 | Max ray distance in meters |
+| `update_rate` | 10.0 | Publish rate in Hz |
+| `origin` | `[0, 0, 0]` | Camera mount offset `[x, y, theta]` relative to body |
+| `layers` | `["all"]` | Box2D collision layers the camera sees |
+| `ignore_self` | true | Skip the camera's own model when raycasting |
+| `wall_height` | 1.0 | Virtual wall height (m), affects column projection |
+| `eye_height` | 0.5 | Camera eye height (m); shifts horizon |
+| `shade_min` / `shade_max` | 0.15 / 1.0 | Brightness at far / near distance |
+| `directional_shading` | 0.85 | Multiplier for grazing-angle hits (1.0 disables) |
+| `sky_color`, `floor_color`, `fog_color` | gray-ish defaults | RGB `[0-255]` triples |
+| `broadcast_tf` | false | Publish `base_link → camera_link` transform |
+| `publish_camera_info` | true | Publish synthetic `sensor_msgs/CameraInfo` |
+| `publish_compressed` | true | Publish JPEG-compressed image |
+| `jpeg_quality` | 75 | JPEG quality (1-100) when compressed publishing is on |
+
+### Topics
+
+| Topic | Type | Notes |
+|-------|------|-------|
+| `/image_raw` | `sensor_msgs/Image` | `rgb8` encoding |
+| `/image_raw/camera_info` | `sensor_msgs/CameraInfo` | Static intrinsics (plumb_bob, zero distortion) |
+| `/image_raw/compressed` | `sensor_msgs/CompressedImage` | JPEG, on if `publish_compressed: true` |
+
+### Verifying the camera
+
+```bash
+# Topics exist and publish at the configured rate
+docker compose exec flatland-nav2 ros2 topic hz /image_raw            # ~10 Hz
+docker compose exec flatland-nav2 ros2 topic hz /image_raw/compressed
+docker compose exec flatland-nav2 ros2 topic echo /image_raw/camera_info --once
+
+# Image fields match config
+docker compose exec flatland-nav2 ros2 topic echo /image_raw --field width    --once  # 320
+docker compose exec flatland-nav2 ros2 topic echo /image_raw --field height   --once  # 240
+docker compose exec flatland-nav2 ros2 topic echo /image_raw --field encoding --once  # rgb8
+
+# Drive the robot toward a wall and watch walls grow / brighten in rviz
+```
+
 ## InOrbit Agent
 
 An [InOrbit ROS2 agent](https://www.inorbit.ai/) runs as a sidecar container (`inorbitai/agent:ros-jazzy-4.33.0`) alongside the simulation, connecting the simulated robot to your OpenRobOps or InOrbit instance. A second lightweight `busybox` container tails the agent log into the main `docker compose` output for easier debugging. Both services are part of the `agent` Compose profile, enabled by default via `.env`.

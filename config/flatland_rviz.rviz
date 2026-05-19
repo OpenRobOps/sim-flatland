@@ -35,6 +35,19 @@ Visualization Manager:
       Style: Flat Squares
       Color: 255; 0; 0
 
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Image Topic: /image_raw
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Camera Image
+      Normalize Range: true
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: true
+
     - Class: rviz_default_plugins/TF
       Name: TF
       Enabled: true
