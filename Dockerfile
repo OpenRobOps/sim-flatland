@@ -52,6 +52,7 @@ RUN cd /ros2_ws/src/flatland && \
 # Copy project-owned plugin sources (the patches only register them)
 COPY plugins/battery.h /ros2_ws/src/flatland/flatland_plugins/include/flatland_plugins/
 COPY plugins/battery.cpp /ros2_ws/src/flatland/flatland_plugins/src/
+COPY plugins/camera_math.h /ros2_ws/src/flatland/flatland_plugins/include/flatland_plugins/
 COPY plugins/camera.h /ros2_ws/src/flatland/flatland_plugins/include/flatland_plugins/
 COPY plugins/camera.cpp /ros2_ws/src/flatland/flatland_plugins/src/
 

@@ -64,3 +64,25 @@ plugins:
   - type: Camera
     name: front_camera
     body: base_link
+    frame: camera_link
+    topic: image_raw
+    origin: [0.18, 0.0, 0.0]
+    update_rate: 10.0
+    width: 320
+    height: 240
+    fov_deg: 90.0
+    range: 8.0
+    layers: ["all"]
+    ignore_self: true
+    wall_height: 1.0
+    eye_height: 0.5
+    shade_min: 0.15
+    shade_max: 1.0
+    directional_shading: 0.85
+    sky_color: [120, 140, 160]
+    floor_color: [60, 55, 50]
+    fog_color: [30, 30, 30]
+    broadcast_tf: false
+    publish_camera_info: true
+    publish_compressed: true
+    jpeg_quality: 75
