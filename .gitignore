@@ -1,2 +1,19 @@
+# Local runtime state (agent logs, credentials, cache)
 local/*
-__pycache__
+
+# Environment and compose overrides
+.env
+docker-compose.override.yml
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Editor temp files
+*~
+*.swp

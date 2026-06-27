@@ -3,7 +3,41 @@
 This folder contains YAML files that need to be applied to OpenRobOps to configure data sources, 
 actions and other settings in OpenRobOps specific to this flatland simulation.
 
-Note: To apply configs, use InOrbit's CLI. First set up `INORBIT_CLI_API_KEY` and
+## Welcome page content
+
+The Welcome dashboard uses seven text widgets across three sections:
+
+**Intro section** (no title)
+
+| File | Layout | Content |
+|------|--------|---------|
+| `welcome-intro.md` | full width | Welcome heading and OpenRobOps intro |
+
+**Dashboards section**
+
+| File | Layout | Content |
+|------|--------|---------|
+| `welcome-fleet.md` | 4 columns | Fleet dashboard description |
+| `welcome-robot.md` | 4 columns | Robot dashboard description |
+| `welcome-navigation.md` | 4 columns | Navigation dashboard description |
+
+**Simulation section**
+
+| File | Layout | Content |
+|------|--------|---------|
+| `welcome-simulation-map.md` | 6 columns | Simulation details and ASCII map |
+| `welcome-action.md` | 6 columns | Commands and key-value telemetry |
+| `welcome-footer.md` | full width | GitHub / docker environment link |
+
+After editing any file, regenerate `config.yaml`:
+
+```
+node embed-welcome-content.mjs
+```
+
+## Apply configs
+
+To apply configs, use InOrbit's CLI. First set up `INORBIT_CLI_API_KEY` and
 `INORBIT_CLI_URL` (e.g. http://oro.example.com/api) environment variables, then:
 ```
 inorbit apply -f config.yaml
