@@ -8,12 +8,12 @@ The map consists of 4 offices and a corridor. Office A and D have charging zones
 
 ```
     ┌─────────────┬─────────────┐
+    │        dock │             │
     │      A      │      B      │
-    │     dock    │             │
     └─────   ─────┴─────   ─────┘
     │         corridor          │
     ┌─────   ─────┬─────   ─────┐
     │      C      │      D      │
-    │             │     dock    │
-    └─────────────┴──────    ───┘
+    │             │ dock        │
+    └─────────────┴─────────────┘
 ```
