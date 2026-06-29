@@ -1,4 +1,5 @@
-[-\[••\]-](/dashboards/robot)
+
+[![robot](/images/bot.svg)](/dashboards/robot)
 
 ### [Robot](/dashboards/robot)
 

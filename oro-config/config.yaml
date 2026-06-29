@@ -88,11 +88,12 @@ spec:
       label: Fleet
       config:
         text: |
-          [||||](/dashboards/fleet)
+          [![fleet](/images/fleet.svg)](/dashboards/fleet)
           
           ### [Fleet](/dashboards/fleet)
           
           Overview of all robots in the fleet, their status and fleet-level diagnostics
+          including audit logs and incidents
       layout:
         chroma: false
         grid: 4
@@ -100,7 +101,8 @@ spec:
       label: Robot
       config:
         text: |
-          [-\[••\]-](/dashboards/robot)
+          
+          [![robot](/images/bot.svg)](/dashboards/robot)
           
           ### [Robot](/dashboards/robot)
           
@@ -112,7 +114,7 @@ spec:
       label: Navigation
       config:
         text: |
-          [o->](/dashboards/navigation)
+          [![navigation](/images/navigation.svg)](/dashboards/navigation)
           
           ### [Navigation](/dashboards/navigation)
           
