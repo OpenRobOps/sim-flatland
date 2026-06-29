@@ -1,4 +1,4 @@
-[o->](/dashboards/navigation)
+[![navigation](/images/navigation.svg)](/dashboards/navigation)
 
 ### [Navigation](/dashboards/navigation)
 

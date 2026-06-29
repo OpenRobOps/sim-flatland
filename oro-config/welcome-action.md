@@ -17,4 +17,6 @@ Currently the robot accepts the following commands:
 
 ### Key-value pairs
 
-Additionally, the robot reports key-value pairs as custom data elements, including battery_charging, battery_percentage and battery_voltage for battery state, and estimated_time_remaining from the nav2 stack. These are added to other built-in attributes implemented by the agent such as CPU usage, disk usage, network rate, etc.
+Additionally, the robot reports key-value pairs as custom data elements, including `battery_charging`, `battery_percentage` and `battery_voltage` for battery state, and `estimated_time_remaining` from the nav2 stack. 
+It also reports a `nav2Health` value collected from ROS Diagnostics.
+These are added to other built-in attributes implemented by the agent such as CPU usage, disk usage, network rate, etc.
