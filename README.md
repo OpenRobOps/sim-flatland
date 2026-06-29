@@ -87,12 +87,25 @@ Rviz2 uses OGRE for 3D rendering, which requires GLX (an X11 protocol). This mea
 
 The container mounts `/dev/dri` for GPU-accelerated rendering (Mesa/DRI). The entrypoint auto-detects the display and forces the `xcb` (X11) Qt platform plugin since OGRE requires GLX.
 
-### NVIDIA GPU support
+### NVIDIA GPU
 
-If you have an NVIDIA GPU with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed, uncomment the `runtime: nvidia` line in `docker-compose.yml`:
+By default the container renders with Mesa which is enough for this simulation on Intel and AMD GPUs. 
+To render on an NVIDIA GPU, whether it is the discrete card in hybrid graphics system or the primary GPU in the machine, install the
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+and apply the `docker-compose.nvidia.yml` overlay:
 
-```yaml
-runtime: nvidia
+```bash
+xhost +local:docker
+docker compose -f docker-compose.nvidia.yml up
+```
+The overlay sets `runtime: nvidia` plus the PRIME render-offload
+variables on both rviz services.
+
+The same `-f docker-compose.nvidia.yml` flag works with the other commands
+above too, such as the separate-rviz workflow:
+
+```bash
+docker compose -f docker-compose.nvidia.yml --profile rviz-separate up rviz
 ```
 
 ## Using Navigation

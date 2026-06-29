@@ -36,6 +36,22 @@ spec:
     keyValue:
       key: "battery_charging"
 ---
+apiVersion: v0.1
+kind: DataSourceDefinition
+metadata:
+  id: nav2Health
+  scope: ""
+spec:
+  label: Nav2 Health
+  source:
+    # Maps a ROS Diagnostics key-value into an attribute, matched by the diagnostic
+    # status name (namespace) plus key. This reads the Nav2 navigation lifecycle
+    # manager's health summary, which the diagnostics aggregator already publishes
+    # on /diagnostics_agg under the "/Other" group.
+    rosDiagnostics:
+      namespace: "/Other"
+      key: "lifecycle_manager_navigation: Nav2 Health"
+---
 #######################################################################################
 ## DashboardDefinition
 #######################################################################################
@@ -227,6 +243,9 @@ spec:
         - id: batteryPercentage
           label: Battery percentage
           unit: "%"
+          type: text
+        - id: nav2Health
+          label: Nav2 health
           type: text
     - label: Key Value pairs
       type: keyValues
@@ -453,6 +472,18 @@ spec:
     path_topics: 
      "0": { "topic": "plan"}
 ---
+# RosDiagnosticsAgentlet: Enable it (runlevel 5) so the agent forwards /diagnostics_agg.
+# Required for ROS Diagnostics key-values to reach ORO and map to attributes
+# (see the nav2Health DataSource above).
+apiVersion: v0.1
+kind: ModuleState
+metadata:
+  id: RosDiagnosticsAgentlet
+  scope: ''
+spec:
+  state:
+    minRunlevel: 5
+---
 # RosTeleopAgentlet: Set the cmd_vel topic
 apiVersion: v0.1
 kind: ModuleState
@@ -463,7 +494,6 @@ spec:
   state:
     publish_zero_vel: true
     cmd_vel_topic: "flatland_0/cmd_vel"
-
 ---
 # RosImageAgentlet: Set the image topic
 apiVersion: v0.1

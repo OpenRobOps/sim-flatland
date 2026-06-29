@@ -1,0 +1,31 @@
+# NVIDIA dGPU offload overlay (opt-in). Use with:
+#   docker compose -f docker-compose.nvidia.yml up
+# Requires the NVIDIA Container Toolkit (docker `nvidia` runtime registered).
+#
+# All NVIDIA-specific config lives here so the base compose stays GPU-agnostic.
+#
+#   NVIDIA_VISIBLE_DEVICES / NVIDIA_DRIVER_CAPABILITIES: read by the nvidia
+#     runtime to pick which GPUs and which driver libs (graphics/display) to
+#     inject; inert without `runtime: nvidia`.
+#   __NV_PRIME_RENDER_OFFLOAD / __GLX_VENDOR_LIBRARY_NAME: tell GLVnd to
+#     dispatch GL to the NVIDIA GPU (PRIME offload). Required on Optimus/PRIME
+#     laptops where the iGPU owns the display, else rviz renders on Mesa/Intel.
+include:
+  - docker-compose.yml
+
+services:
+  flatland-nav2:
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - __NV_PRIME_RENDER_OFFLOAD=1
+      - __GLX_VENDOR_LIBRARY_NAME=nvidia
+
+  rviz:
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - __NV_PRIME_RENDER_OFFLOAD=1
+      - __GLX_VENDOR_LIBRARY_NAME=nvidia
