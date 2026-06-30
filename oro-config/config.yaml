@@ -8,6 +8,10 @@ metadata:
   scope: ""
 spec:
   label: Battery Percentage
+  # Values arrive as a 0..1 fraction; unit '%' makes ORO display them as a
+  # percentage (the formatter multiplies by 100), so 0.12 shows as "12%".
+  unit: '%'
+  precision: 0
   source:
     keyValue:
       key: "battery_percentage"
@@ -518,3 +522,51 @@ spec:
         img_width: 320
         img_height: 240
         is_on: true
+---
+#######################################################################################
+## Battery status thresholds + incident
+#######################################################################################
+# Status thresholds on the battery percentage attribute. The ingest status engine
+# evaluates battery_percentage and raises a warning/error alert that carries the
+# evaluated value, so the incident's Data column shows the percentage (e.g. "12%").
+# The ERROR rule is listed first on purpose: the evaluator stops at the first
+# matching rule, so the stricter threshold must come first or a critical reading
+# would be reported as a warning.
+apiVersion: v0.1
+kind: StatusDefinition
+metadata:
+  id: batteryPercentage
+  scope: ''
+spec:
+  rules:
+  # Thresholds are on the stored 0..1 fraction (0.08 = 8%, 0.20 = 20%).
+  - function: BELOW
+    params: [0.08]
+    status: ERROR
+  - function: BELOW
+    params: [0.20]
+    status: WARNING
+---
+# Incident definition keyed to the battery percentage attribute (the triggerId).
+# As the battery drains the incident escalates: a low-battery warning offers the
+# operator a manual dock action; a critical error docks the robot automatically;
+# on recovery the battery is reset.
+apiVersion: v0.1
+kind: IncidentDefinition
+metadata:
+  id: batteryPercentage
+  scope: ''
+spec:
+  label: Battery low
+  labelTemplate: '{{robotName}}: battery low'
+  warning:
+    severity: SEV 2
+    manualActions:
+    - DockAuto
+  error:
+    severity: SEV 0
+    autoActions:
+    - DockAuto
+  ok:
+    autoActions:
+    - BatteryReset
