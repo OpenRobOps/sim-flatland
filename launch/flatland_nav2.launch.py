@@ -52,8 +52,12 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'world_path': world_path,
-            'update_rate': 200.0,
-            'step_size': 0.005,
+            # 50 Hz physics is plenty for a diff-drive robot (nav2 controller runs at
+            # 20 Hz). The world rate also sets the /clock publish rate, and every
+            # use_sim_time node wakes per /clock message — at 200 Hz the whole nav2
+            # stack burned CPU just processing time updates.
+            'update_rate': 50.0,
+            'step_size': 0.02,
             'show_viz': 0.0,
             'viz_pub_rate': 30.0,
             'use_sim_time': False,  # flatland is the time source
@@ -160,7 +164,7 @@ def generate_launch_description():
     # Diagnostics watcher node — publishes /diagnostics for sim health.
     # use_sim_time is intentionally left off: the watcher's freshness and
     # presence checks only need wall-clock time, and subscribing to /clock
-    # at the sim step rate (200 Hz) is the dominant CPU cost for this node.
+    # at the sim step rate is the dominant CPU cost for this node.
     diagnostics_watcher = Node(
         package='diagnostics_watcher',
         executable='watcher',
