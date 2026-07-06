@@ -20,7 +20,9 @@ plugins:
     odom_pub: odom
     ground_truth_pub: odometry/ground_truth
     enable_odom_pub: true
-    pub_rate: 200.0
+    # 20 Hz odom (+odom TF) is enough for nav2 (amcl/costmaps); 200 Hz made every
+    # TF listener in the stack process 10x the messages for no fidelity gain.
+    pub_rate: 20.0
 
   - type: Laser
     name: laser
@@ -60,6 +62,8 @@ plugins:
   - type: ModelTfPublisher
     name: tf_publisher
     publish_tf_world: false
+    # Defaults to infinity (= every physics step); cap to keep /tf lightweight.
+    update_rate: 20.0
 
   - type: Camera
     name: front_camera
