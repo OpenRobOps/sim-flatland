@@ -194,7 +194,55 @@ spec:
       layout:
         chroma: false
         grid: 12
-
+---
+apiVersion: v0.1
+kind: DashboardDefinition
+metadata:
+  id: fleet
+  scope: ''
+spec:
+  label: Fleet
+  order: 1
+  sections:
+  - label: Fleet
+    scope: fleet
+    widgets:
+    - config:
+        statuses:
+        - id: cpuLoadPercentage
+          label: CPU
+        - id: diskUsagePercentage
+          label: RAM
+        - id: batteryPercentage
+          label: Battery
+      label: Fleet Status
+      layout:
+        chroma: true
+        grid: 12
+      type: fleetStatus
+    withControlWidget: true
+  - label: Details
+    scope: fleet
+    widgets:
+    - label: Fleet Log
+      layout:
+        chroma: true
+        grid: 4
+        height: 1
+      type: auditLogFleet
+    - label: Incident List
+      layout:
+        chroma: true
+        grid: 8
+        height: 1
+      type: incidentList
+    - label: Incident Timeline
+      layout:
+        chroma: true
+        grid: 12
+        height: 1
+      type: incidentTimeline
+    withControlWidget: false
 ---    
 apiVersion: v0.1
 kind: DashboardDefinition
@@ -542,10 +590,10 @@ spec:
   rules:
   # Thresholds are on the stored 0..1 fraction (0.08 = 8%, 0.20 = 20%).
   - function: BELOW
-    params: [0.08]
+    params: [0.15]
     status: ERROR
   - function: BELOW
-    params: [0.20]
+    params: [0.30]
     status: WARNING
 ---
 # Incident definition keyed to the battery percentage attribute (the triggerId).
