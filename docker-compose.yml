@@ -71,6 +71,18 @@ services:
     volumes:
       - ./local:/root/.inorbit/local/
       - ./local/agent.env.sh:/root/.inorbit/local/agent.env.sh
+    # HACK: agents <= 4.33.0 read the wrong euler index for yaw (the bundled PyPI
+    # 'transformations' lib expects [w,x,y,z]), so angular distance/speed are
+    # always 0. Patch odometry.py to read euler[0] (as pose.py does) before
+    # starting. Remove once a fixed agent image (> 4.33.0) is released.
+    command:
+      - bash
+      - -c
+      - |
+        sed -i 's/euler_start\[2\]/euler_start[0]/; s/euler_end\[2\]/euler_end[0]/' \
+          /usr/local/inorbit/inorbit/agentlets/odometry.py
+        rm -rf /usr/local/inorbit/inorbit/agentlets/__pycache__
+        exec /usr/local/inorbit/scripts/start.sh
 
   # Tail agent logs from a different container; it's lightweight and it helps debugging in a single docker-compose terminal
   agent-logs:
