@@ -29,6 +29,16 @@ git submodule update --init        # first time only: fetch upstream flatland
 docker compose build
 ```
 
+Pushes to `main` automatically build and publish
+`ghcr.io/openrobops/flatland-nav2:latest` via GitHub Actions
+(`.github/workflows/publish.yml`). To push manually:
+
+```bash
+docker login ghcr.io               # PAT with write:packages
+docker compose build
+docker push ghcr.io/openrobops/flatland-nav2:latest
+```
+
 ### Run with rviz (default)
 
 ```bash
