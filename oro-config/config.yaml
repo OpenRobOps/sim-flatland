@@ -514,8 +514,9 @@ spec:
     camera_topics:
       0: "image_raw/compressed"
     cameraViewOn: true
-    cameras_config: 
-      0: 
+    cameras_config:
+      0:
+        topic: "image_raw/compressed"
         output_encoding: 'mono8'
         quality: 50
         rate: 2

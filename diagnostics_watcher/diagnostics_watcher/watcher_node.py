@@ -83,8 +83,8 @@ class DiagnosticsWatcher(Node):
             self._on_scan,
             _best_effort_qos(),
         )
-        # /odom and /tf are intentionally NOT subscribed: at 200 Hz each they
-        # dominate this node's CPU, and freshness here only needs to confirm
+        # /odom and /tf are intentionally NOT subscribed: as the highest-rate
+        # topics they dominate this node's CPU, and freshness here only needs to confirm
         # *something* is publishing — done via count_publishers() in the diag
         # tasks below.
         self.create_subscription(
@@ -242,7 +242,10 @@ class DiagnosticsWatcher(Node):
         self._lifecycle_pending.discard(name)
         timer = self._lifecycle_timers.pop(name, None)
         if timer is not None:
-            timer.cancel()
+            # destroy, not cancel: a cancelled timer stays registered with the node
+            # and the executor scans it forever — at one timer per poll per nav2
+            # node this leaked thousands of timers and grew CPU unboundedly.
+            self.destroy_timer(timer)
         try:
             result = future.result()
         except Exception as ex:  # noqa: BLE001 - record and continue
@@ -258,10 +261,11 @@ class DiagnosticsWatcher(Node):
             self._lifecycle_state[name] = (DiagnosticStatus.ERROR, label)
 
     def _on_lifecycle_timeout(self, name, future):
-        # Always cancel this one-shot timer first.
+        # Always destroy this one-shot timer first (see _on_lifecycle_response on
+        # why destroy rather than cancel).
         timer = self._lifecycle_timers.pop(name, None)
         if timer is not None:
-            timer.cancel()
+            self.destroy_timer(timer)
         if future.done():
             return  # response arrived before the timeout fired
         future.cancel()
