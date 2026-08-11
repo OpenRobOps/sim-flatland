@@ -212,7 +212,7 @@ spec:
         - id: cpuLoadPercentage
           label: CPU
         - id: diskUsagePercentage
-          label: RAM
+          label: Disk
         - id: batteryPercentage
           label: Battery
       label: Fleet Status
