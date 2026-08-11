@@ -567,6 +567,3 @@ spec:
     severity: SEV 0
     autoActions:
     - DockAuto
-  ok:
-    autoActions:
-    - BatteryReset
