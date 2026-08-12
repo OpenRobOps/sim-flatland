@@ -59,6 +59,22 @@ spec:
 apiVersion: v0.1
 kind: DataSourceDefinition
 metadata:
+  id: navigationActivity
+  scope: ""
+spec:
+  label: Navigation Activity
+  source:
+    # The diagnostics_watcher's cmd_vel freshness check, grouped under
+    # /Navigation by the aggregator: OK while navigating (cmd_vel flowing),
+    # WARN when idle. The value is the check's message, e.g.
+    # "last message 0.07s ago" or "last message 163.76s ago (threshold 5.00s)".
+    rosDiagnostics:
+      namespace: "/Navigation"
+      key: "diagnostics_watcher: cmd_vel_freshness"
+---
+apiVersion: v0.1
+kind: DataSourceDefinition
+metadata:
   id: message
   scope: ""
 spec:
@@ -233,6 +249,8 @@ spec:
           label: Battery
         - id: message
           label: Message
+        - id: navigationActivity
+          label: Navigation
       label: Fleet Status
       layout:
         chroma: true
@@ -320,6 +338,9 @@ spec:
           type: text
         - id: nav2Health
           label: Nav2 health
+          type: text
+        - id: navigationActivity
+          label: Navigation activity
           type: text
     - label: Key Value pairs
       type: keyValues
@@ -698,6 +719,25 @@ spec:
     severity: SEV 0
     autoActions:
     - DockAuto
+---
+# Status on the navigation activity value (see the navigationActivity
+# DataSource): the watcher's WARN/stale messages carry "(threshold ...)"
+# or say "no message received yet" (strings from diagnostics_watcher's
+# status_logic.py — keep them in sync); anything else means cmd_vel is
+# fresh, i.e. the robot is navigating, and evaluates to OK.
+apiVersion: v0.1
+kind: StatusDefinition
+metadata:
+  id: navigationActivity
+  scope: ''
+spec:
+  rules:
+  - function: CONTAINS
+    params: ["threshold"]
+    status: WARNING
+  - function: CONTAINS
+    params: ["no message"]
+    status: WARNING
 ---
 # Status on the echoed message: 'error' and 'warning' values raise the
 # corresponding status; any other message is OK. The ERROR rule is listed
