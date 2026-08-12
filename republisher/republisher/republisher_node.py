@@ -21,6 +21,11 @@ class Republisher(Node):
             '/navigate_to_pose/_action/feedback',
             self._on_nav_feedback, 10)
 
+        # ORO "Message" actions publish 'echo=<text>' on the custom command
+        # topic; echo it back verbatim as a custom_data key-value (key 'echo').
+        self.create_subscription(
+            String, '/inorbit/custom_command', self._on_custom_command, 10)
+
     def _publish_kv(self, key, value):
         msg = String()
         msg.data = f'{key}={value}'
@@ -31,6 +36,10 @@ class Republisher(Node):
         self._publish_kv('battery_voltage', msg.voltage)
         charging = msg.power_supply_status == BatteryState.POWER_SUPPLY_STATUS_CHARGING
         self._publish_kv('battery_charging', 'true' if charging else 'false')
+
+    def _on_custom_command(self, msg: String):
+        if msg.data.startswith('echo='):
+            self.pub.publish(msg)
 
     def _on_nav_feedback(self, msg):
         eta = msg.feedback.estimated_time_remaining
