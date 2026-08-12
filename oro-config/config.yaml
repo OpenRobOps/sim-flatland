@@ -56,6 +56,17 @@ spec:
       namespace: "/Other"
       key: "lifecycle_manager_navigation: Nav2 Health"
 ---
+apiVersion: v0.1
+kind: DataSourceDefinition
+metadata:
+  id: message
+  scope: ""
+spec:
+  label: Message
+  source:
+    keyValue:
+      key: "echo"
+---
 #######################################################################################
 ## DashboardDefinition
 #######################################################################################
@@ -172,6 +183,10 @@ spec:
           [RESET](/dashboards/ops): Replaces the battery to 100%  
           [CHARGING](/dashboards/ops), [DISCHARGING](/dashboards/ops): toggles the charging state
           
+          **Message**  
+          [HELLO](/dashboards/ops), [MESSAGE](/dashboards/ops): Echoes a message back from the robot as an `echo` key-value  
+          [WARNING](/dashboards/ops), [ERROR](/dashboards/ops): Sets the message status, raising an incident visible in Fleet View
+          
           **Others**  
           [RESTART AGENT](/dashboards/ops): Restart agent running on a selected robot  
           [CANCEL NAVIGATION](/dashboards/ops): Cancel the current navigation
@@ -179,7 +194,7 @@ spec:
           
           ### Key-value pairs
           
-          Additionally, the robot reports key-value pairs as custom data elements, including `battery_charging`, `battery_percentage` and `battery_voltage` for battery state, and `estimated_time_remaining` from the nav2 stack. 
+          Additionally, the robot reports key-value pairs as custom data elements, including `battery_charging`, `battery_percentage` and `battery_voltage` for battery state, `estimated_time_remaining` from the nav2 stack, and `echo` for messages echoed back by the Message actions. 
           It also reports a `nav2Health` value collected from ROS Diagnostics.
           These are added to other built-in attributes implemented by the agent such as CPU usage, disk usage, network rate, etc.
       layout:
@@ -194,6 +209,7 @@ spec:
       layout:
         chroma: false
         grid: 12
+
 ---
 apiVersion: v0.1
 kind: DashboardDefinition
@@ -215,6 +231,8 @@ spec:
           label: Disk
         - id: batteryPercentage
           label: Battery
+        - id: message
+          label: Message
       label: Fleet Status
       layout:
         chroma: true
@@ -501,9 +519,73 @@ spec:
   - name: message
     value: dock=D
   description: 'Go to Charger D'
-  lock: true      
+  lock: true
   widgets:
   - navigation
+---
+apiVersion: v0.1
+kind: ActionDefinition
+metadata:
+  id: MessageHello
+  scope: ''
+spec:
+  label: Hello
+  group: Message
+  type: PublishToTopic
+  arguments:
+  - name: message
+    value: echo=Hello from ORO!
+  description: 'Echo a hello message back from the robot'
+  lock: true
+---
+apiVersion: v0.1
+kind: ActionDefinition
+metadata:
+  id: MessageWarning
+  scope: ''
+spec:
+  label: Warning
+  group: Message
+  type: PublishToTopic
+  arguments:
+  - name: message
+    value: echo=warning
+  description: 'Set the message status to warning'
+  lock: true
+---
+apiVersion: v0.1
+kind: ActionDefinition
+metadata:
+  id: MessageError
+  scope: ''
+spec:
+  label: Error
+  group: Message
+  type: PublishToTopic
+  arguments:
+  - name: message
+    value: echo=error
+  description: 'Set the message status to error'
+  lock: true
+---
+apiVersion: v0.1
+kind: ActionDefinition
+metadata:
+  id: MessageCustom
+  scope: ''
+spec:
+  label: Message
+  group: Message
+  type: PublishToTopic
+  arguments:
+  - name: message
+    value: echo={{text}}
+  - name: text
+    type: string
+    input:
+      control: text
+  description: 'Echo a custom message back from the robot'
+  lock: true
 ---
 #######################################################################################
 ## ModuleState
@@ -616,3 +698,32 @@ spec:
     severity: SEV 0
     autoActions:
     - DockAuto
+---
+# Status on the echoed message: 'error' and 'warning' values raise the
+# corresponding status; any other message is OK. The ERROR rule is listed
+# first because the evaluator stops at the first matching rule.
+apiVersion: v0.1
+kind: StatusDefinition
+metadata:
+  id: message
+  scope: ''
+spec:
+  rules:
+  - function: EQUALS
+    params: ["error"]
+    status: ERROR
+  - function: EQUALS
+    params: ["warning"]
+    status: WARNING
+---
+apiVersion: v0.1
+kind: IncidentDefinition
+metadata:
+  id: message
+  scope: ''
+spec:
+  label: Message
+  warning:
+    severity: SEV 2
+  error:
+    severity: SEV 1
