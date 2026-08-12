@@ -10,6 +10,10 @@ Currently the robot accepts the following commands:
 [RESET](/dashboards/ops): Replaces the battery to 100%  
 [CHARGING](/dashboards/ops), [DISCHARGING](/dashboards/ops): toggles the charging state
 
+**Message**  
+[HELLO](/dashboards/ops), [MESSAGE](/dashboards/ops): Echoes a message back from the robot as an `echo` key-value  
+[WARNING](/dashboards/ops), [ERROR](/dashboards/ops): Sets the message status, raising an incident visible in Fleet View
+
 **Others**  
 [RESTART AGENT](/dashboards/ops): Restart agent running on a selected robot  
 [CANCEL NAVIGATION](/dashboards/ops): Cancel the current navigation
@@ -17,6 +21,6 @@ Currently the robot accepts the following commands:
 
 ### Key-value pairs
 
-Additionally, the robot reports key-value pairs as custom data elements, including `battery_charging`, `battery_percentage` and `battery_voltage` for battery state, and `estimated_time_remaining` from the nav2 stack. 
+Additionally, the robot reports key-value pairs as custom data elements, including `battery_charging`, `battery_percentage` and `battery_voltage` for battery state, `estimated_time_remaining` from the nav2 stack, and `echo` for messages echoed back by the Message actions. 
 It also reports a `nav2Health` value collected from ROS Diagnostics.
 These are added to other built-in attributes implemented by the agent such as CPU usage, disk usage, network rate, etc.
