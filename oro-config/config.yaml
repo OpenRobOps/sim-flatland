@@ -342,6 +342,13 @@ spec:
         - id: navigationActivity
           label: Navigation activity
           type: text
+    - config: {}
+      label: Actions
+      layout:
+        chroma: true
+        grid: 4
+        height: 1
+      type: actionsWidget
     - label: Key Value pairs
       type: keyValues
       layout:
@@ -366,59 +373,6 @@ spec:
       layout:
         chroma: true
         grid: 8
-        height: 1
-    - type: diagnostics
-      label: Diagnostics
-      layout:
-        chroma: true
-        height: 1
-    - type: chart
-      label: System
-      config:
-        chartType: linechart
-        dataSources:
-        - id: cpuLoadPercentage
-          label: CPU
-          precision: 0
-          scale: 100
-        - id: ramUsagePercentage
-          label: RAM
-          precision: 0
-          scale: 1
-        max: 120
-        min: 0
-      layout:
-        chroma: true
-        grid: 8
-        height: 1
----
-apiVersion: v0.1
-kind: DashboardDefinition
-metadata:
-  id: ops
-  scope: ''
-spec:
-  label: Ops
-  order: 3
-  sections:
-  - label: Health
-    withControlWidget: true
-    scope: robot
-    widgets:
-    - config: {}
-      label: Actions
-      layout:
-        chroma: true
-        grid: 4
-        height: 1
-      type: actionsWidget
-    - type: cameraWidget
-      label: Front camera
-      config: 
-        cameraId: "0"
-      layout: 
-        chroma: true
-        grid: 4
         height: 1
     - type: diagnostics
       label: Diagnostics
