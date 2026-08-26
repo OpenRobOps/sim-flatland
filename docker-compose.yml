@@ -91,7 +91,7 @@ services:
     build:
       context: ./iso-agent
       additional_contexts:
-        iso21423: ../iso21423   # sibling checkout of github.com/OpenRobOps/iso21243 (the SDK)
+        iso21423: ../iso21423   # sibling checkout of github.com/OpenRobOps/iso21423 (the SDK)
     image: ghcr.io/openrobops/flatland-iso-agent:latest
     container_name: iso_agent
     profiles: ["iso-agent"]
