@@ -46,7 +46,11 @@ async function main() {
   const imr = await client.registerSelfEntity({
     entityUuid: ENTITY_UUID, entityType: 'IMR', manufacturerName: 'OpenRobOps flatland',
     details: { model: 'flatland-nav2' },
-    capabilities: { provides: ['status', 'odometry', 'batteryStatus'], accepts: ['move', 'cancelRequest'] },
+    capabilities: {
+      provides: ['status', 'odometry', 'batteryStatus'],
+      // `customCommand` is OpenRobOps' vendor action type: passthrough of PublishToTopic actions.
+      accepts: ['move', 'dock', 'cancelRequest', 'customCommand'],
+    },
   });
   log('registered IMR', ENTITY_UUID);
 
@@ -58,7 +62,7 @@ async function main() {
   const sub = (name, messageType, cb) => new Topic({ ros, name, messageType }).subscribe(cb);
 
   // ---- latest-value cache; publishing happens on timers / on change ----
-  const latest = { amcl: null, odom: null, battery: null, diagLevel: 0, goalActive: false };
+  const latest = { amcl: null, odom: null, battery: null, diagLevel: 0, goalActive: false, docking: false };
   sub('/amcl_pose', 'geometry_msgs/msg/PoseWithCovarianceStamped', (m) => { latest.amcl = m; });
   sub('/odom', 'nav_msgs/msg/Odometry', (m) => { latest.odom = m; });
   sub('/diagnostics_toplevel_state', 'diagnostic_msgs/msg/DiagnosticStatus', (m) => { latest.diagLevel = m.level; refreshStatus(); });
@@ -82,6 +86,7 @@ async function main() {
     const states = deriveStates({
       goalActive: latest.goalActive, linear: latest.odom?.twist?.twist?.linear?.x ?? 0,
       diagLevel: latest.diagLevel, charging: b.batteryChargingState === 'CHARGING', soc: b.batterySoc,
+      docking: latest.docking,
     });
     const key = states.join(',');
     if (key === lastStates) return;
@@ -90,16 +95,36 @@ async function main() {
   }
   refreshStatus();
 
-  // ---- ISO move -> nav2 NavigateToPose. cancelRequest is handled by the SDK and surfaces as ctx.signal. ----
+  // ---- ISO move/dock -> nav2 NavigateToPose. cancelRequest is handled by the SDK and surfaces as ctx.signal. ----
   const nav = new Action({ ros, name: '/navigate_to_pose', actionType: 'nav2_msgs/action/NavigateToPose' });
-  imr.onRequest('move', (action, ctx) => new Promise((resolve) => {
-    log('move ->', JSON.stringify(action.properties.location));
-    const goalId = nav.sendGoal(toNavGoal(action.properties),
+  const navigate = (props, ctx) => new Promise((resolve) => {
+    const goalId = nav.sendGoal(toNavGoal(props),
       () => resolve(ctx.succeeded()),
       (fb) => ctx.progress({ distanceRemaining: fb.distance_remaining }),
       (err) => resolve(ctx.aborted('GENERAL_FAILURE', String(err))));
     ctx.signal.addEventListener('abort', () => { if (goalId) nav.cancelGoal(goalId); resolve(ctx.aborted('REJECTED', 'canceled')); });
-  }));
+  });
+  imr.onRequest('move', (action, ctx) => {
+    log('move ->', JSON.stringify(action.properties.location));
+    return navigate(action.properties, ctx);
+  });
+  // The sim's battery plugin starts charging by itself inside a charging zone, so docking is just
+  // driving to the dock; CHARGING then shows up through /battery_state.
+  imr.onRequest('dock', async (action, ctx) => {
+    log('dock ->', JSON.stringify(action.properties.dockLocation));
+    latest.docking = true; refreshStatus();
+    try { return await navigate(action.properties, ctx); } finally { latest.docking = false; refreshStatus(); }
+  });
+
+  // ---- OpenRobOps customCommand (PublishToTopic passthrough) -> /inorbit/custom_command, as the InOrbit agent did ----
+  const customCommand = new Topic({ ros, name: '/inorbit/custom_command', messageType: 'std_msgs/msg/String' });
+  imr.onRequest('customCommand', async (action, ctx) => {
+    const { command } = action.properties;
+    if (typeof command !== 'string') return ctx.aborted('MALFORMED_REQUEST', 'properties.command must be a string');
+    log('customCommand ->', command);
+    customCommand.publish({ data: command });   // fire-and-forget, like the topic republish it replaces
+    return ctx.succeeded();
+  });
 
   const shutdown = async () => { log('shutting down'); await imr.unregister().catch(() => {}); await client.close().catch(() => {}); process.exit(0); };
   process.on('SIGINT', shutdown);

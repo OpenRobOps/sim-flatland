@@ -31,6 +31,16 @@ test('states: idle vs moving vs charging/low battery', () => {
     states: deriveStates({ goalActive: true, linear: 0, diagLevel: 0, charging: false, soc: 0.5 }) });
 });
 
+test('states: docking flag', () => {
+  assert.deepEqual(deriveStates({ goalActive: true, linear: 0.2, diagLevel: 0, charging: false, soc: 0.5, docking: true }),
+    ['MODE_AUTO', 'READY', 'FORWARD', 'DOCKING']);
+});
+
+test('dock -> nav goal uses dockLocation', () => {
+  const g = toNavGoal({ dockLocation: { ccsId: '0b1c2d3e-4f50-4a6b-8c7d-9e0f1a2b3c4d', x: 9, y: 18.5, z: 0 }, dockActions: ['CHARGE'] });
+  assert.deepEqual(g.pose.pose.position, { x: 9, y: 18.5, z: 0 });
+});
+
 test('goal active from GoalStatusArray', () => {
   assert.equal(goalActiveFrom({ status_list: [{ status: 4 }, { status: 2 }] }), true);
   assert.equal(goalActiveFrom({ status_list: [{ status: 4 }] }), false);
