@@ -2,8 +2,11 @@
 // status/odometry/batteryStatus to the fleet manager's broker, and serves ISO `move` requests
 // as nav2 NavigateToPose goals. Configuration is env-only (see ../local/iso-agent.env.sh.example).
 import { Ros, Topic, Action } from 'roslib';
-import { Iso21423Client } from '@openrobops/iso21423';
-import { toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal } from './mapping.js';
+import { Iso21423Client, registerExtensionResource } from '@openrobops/iso21423';
+import {
+  toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal,
+  parseKeyValue, toCustomData, CUSTOM_DATA_RESOURCE, CUSTOM_DATA_RESOURCE_CONFIG,
+} from './mapping.js';
 
 const env = (k, d) => {
   const v = process.env[k] ?? d;
@@ -40,6 +43,7 @@ async function main() {
   const url = `${cfg.protocol}${cfg.hostname}:${cfg.port}`;
   log(`broker ${url} as ${cfg.username}`);
 
+  registerExtensionResource(CUSTOM_DATA_RESOURCE, CUSTOM_DATA_RESOURCE_CONFIG);
   const client = await Iso21423Client.connect({ url, security: { username: cfg.username, password: cfg.password } });
   client.on('connection', (s) => log('connection', s));
   client.on('diagnostic', (e) => log('diagnostic', e.code, JSON.stringify(e.detail ?? '')));
@@ -47,7 +51,7 @@ async function main() {
     entityUuid: ENTITY_UUID, entityType: 'IMR', manufacturerName: 'OpenRobOps flatland',
     details: { model: 'flatland-nav2' },
     capabilities: {
-      provides: ['status', 'odometry', 'batteryStatus'],
+      provides: ['status', 'odometry', 'batteryStatus', CUSTOM_DATA_RESOURCE],
       // `customCommand` is OpenRobOps' vendor action type: passthrough of PublishToTopic actions.
       accepts: ['move', 'dock', 'cancelRequest', 'customCommand'],
     },
@@ -71,6 +75,21 @@ async function main() {
     latest.battery = m;
     imr.publishBatteryStatus(toBatteryStatus(m)).catch((e) => log('battery publish failed', e.message));
     refreshStatus();
+  });
+
+  // ---- /inorbit/custom_data "key=value" lines -> customData extension resource, batched per 500 ms ----
+  let pendingKv = null;
+  sub('/inorbit/custom_data', 'std_msgs/msg/String', (m) => {
+    const kv = parseKeyValue(m.data);
+    if (!kv) return;
+    if (!pendingKv) {
+      pendingKv = {};
+      setTimeout(() => {
+        const values = pendingKv; pendingKv = null;
+        imr.publishExtension(CUSTOM_DATA_RESOURCE, toCustomData(values)).catch((e) => log('customData publish failed', e.message));
+      }, 500);
+    }
+    pendingKv[kv[0]] = kv[1];
   });
 
   // ponytail: /amcl_pose only updates while the robot moves; good enough for a sim. Use TF map->base_link if smoothness matters.

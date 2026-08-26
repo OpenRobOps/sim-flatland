@@ -11,11 +11,15 @@ The ISO 21423 agent accepts ISO `move` and `cancelRequest` requests, which OpenR
 **Battery**  
 [RESET](/dashboards/robot), [CHARGING](/dashboards/robot), [DISCHARGING](/dashboards/robot): simulation hacks forwarded as an OpenRobOps `customCommand` request, which the agent republishes on the sim's command topic
 
-The Message actions of the ROS2 configuration are not available yet: their `echo` reply is key-value data, which has no ISO 21423 path.
+**Message**  
+[HELLO](/dashboards/robot), [MESSAGE](/dashboards/robot): Echoes a message back from the robot as an `echo` key-value  
+[WARNING](/dashboards/robot), [ERROR](/dashboards/robot): Sets the message status, raising an incident visible in Fleet View
 
 ### Reported data
 
 The robot publishes the ISO 21423 `status`, `odometry` and `batteryStatus` resources. OpenRobOps
 maps them onto its built-in attributes: online state, `pose`, `speedLinear`, `speedAngular`,
-`batteryPercentage`, `batteryVoltage` and `batteryIsCharging`. There are no key-value pairs,
-ROS diagnostics or system vitals (CPU, disk, network) in this mode.
+`batteryPercentage`, `batteryVoltage` and `batteryIsCharging`. Key-value pairs (`battery_*`,
+`estimated_time_remaining`, `echo`) travel as OpenRobOps' `customData` extension resource, an
+ISO 21423 deployment-defined resource. There are no ROS diagnostics or system vitals (CPU, disk,
+network) in this mode.

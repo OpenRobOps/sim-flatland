@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertValid } from '@openrobops/iso21423/schema';
-import { toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal, yawFromQuaternion } from '../src/mapping.js';
+import {
+  toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal, yawFromQuaternion, parseKeyValue, toCustomData,
+} from '../src/mapping.js';
 
 const ts = () => new Date().toISOString();
 
@@ -50,4 +52,14 @@ test('move -> nav goal quaternion matches yaw', () => {
   const g = toNavGoal({ location: { ccsId: '0b1c2d3e-4f50-4a6b-8c7d-9e0f1a2b3c4d', x: 1, y: 2, z: 0 }, orientation: { yaw: 1, pitch: 0, roll: 0 } });
   assert.equal(g.pose.header.frame_id, 'map');
   assert.ok(Math.abs(yawFromQuaternion(g.pose.pose.orientation) - 1) < 1e-9);
+});
+
+test('custom_data key=value parsing keeps = inside the value and rejects keyless lines', () => {
+  assert.deepEqual(parseKeyValue('echo=a=b'), ['echo', 'a=b']);
+  assert.deepEqual(parseKeyValue('battery_charging=true'), ['battery_charging', 'true']);
+  assert.equal(parseKeyValue('=x'), null);
+  assert.equal(parseKeyValue('nothing'), null);
+  const d = toCustomData({ echo: 'hi' });
+  assert.deepEqual(d.values, { echo: 'hi' });
+  assert.ok(!Number.isNaN(Date.parse(d.timestamp)));
 });
