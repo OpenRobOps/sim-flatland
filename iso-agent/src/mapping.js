@@ -1,0 +1,69 @@
+// Pure ROS 2 message -> ISO 21423 resource mappings. No I/O, unit-tested in test/mapping.test.js.
+
+/** geometry_msgs/Quaternion -> yaw (rad). */
+export function yawFromQuaternion({ x, y, z, w }) {
+  return Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
+}
+
+/**
+ * `/amcl_pose` (PoseWithCovarianceStamped) + `/odom` twist -> ISO `Odometry` body (no timestamp).
+ * Flatland's map origin is [0,0,0], so map coordinates ARE the CCS coordinates; the matching
+ * ORO calibration is the identity (see oro-config/iso-robot.yaml).
+ */
+export function toOdometry(ccsId, amclPose, odom) {
+  const p = amclPose.pose.pose;
+  const t = odom?.twist?.twist ?? { linear: { x: 0 }, angular: { z: 0 } };
+  return {
+    pose: {
+      locationPoint: { ccsId, x: p.position.x, y: p.position.y, z: 0 },
+      orientation: { yaw: yawFromQuaternion(p.orientation), pitch: 0, roll: 0 },
+    },
+    velocity: { linear: t.linear.x, angular: t.angular.z },
+  };
+}
+
+// sensor_msgs/BatteryState power_supply_status
+const CHARGING_STATE = { 1: 'CHARGING', 2: 'DISCHARGING', 3: 'NOT_CHARGING', 4: 'FULL' };
+
+/** `/battery_state` (sensor_msgs/BatteryState) -> ISO `BatteryStatus` body (no timestamp). */
+export function toBatteryStatus(msg) {
+  const soc = Number.isFinite(msg.percentage) ? Math.min(1, Math.max(0, msg.percentage)) : 0;
+  const out = { batterySoc: soc, batteryChargingState: CHARGING_STATE[msg.power_supply_status] ?? 'UNKNOWN' };
+  if (Number.isFinite(msg.voltage)) out.batteryVoltage = msg.voltage;
+  if (Number.isFinite(msg.current)) out.batteryCurrent = msg.current;
+  return out;
+}
+
+/**
+ * Operating states from the latest telemetry snapshot.
+ * @param {{goalActive:boolean, linear:number, diagLevel:number, charging:boolean, soc:number}} s
+ *   diagLevel is diagnostic_msgs/DiagnosticStatus.level (0 OK, 1 WARN, 2 ERROR, 3 STALE).
+ */
+export function deriveStates({ goalActive, linear, diagLevel, charging, soc }) {
+  const states = ['MODE_AUTO', diagLevel >= 2 ? 'NOT_READY' : 'READY'];
+  if (Math.abs(linear) > 0.01) states.push(linear > 0 ? 'FORWARD' : 'REVERSE');
+  else states.push(goalActive ? 'STOPPED' : 'IDLE');
+  if (charging) states.push('CHARGING');
+  if (soc < 0.2) states.push('LOW_BATTERY');
+  return states;
+}
+
+/** True when any goal in an action_msgs/GoalStatusArray is accepted or executing (status 1, 2, 3=canceling). */
+export function goalActiveFrom(statusArray) {
+  return (statusArray.status_list ?? []).some((g) => g.status >= 1 && g.status <= 3);
+}
+
+/** ISO `move` properties -> nav2 NavigateToPose goal in the `map` frame. */
+export function toNavGoal(props) {
+  const yaw = props.orientation?.yaw ?? 0;
+  return {
+    pose: {
+      header: { frame_id: 'map' },
+      pose: {
+        position: { x: props.location.x, y: props.location.y, z: 0 },
+        orientation: { x: 0, y: 0, z: Math.sin(yaw / 2), w: Math.cos(yaw / 2) },
+      },
+    },
+    behavior_tree: '',
+  };
+}

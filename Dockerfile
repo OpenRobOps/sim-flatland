@@ -13,6 +13,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     ros-jazzy-slam-toolbox \
     ros-jazzy-diagnostic-updater \
     ros-jazzy-diagnostic-aggregator \
+    ros-jazzy-rosbridge-server \
     cmake \
     libopencv-dev \
     liblua5.1-0-dev \

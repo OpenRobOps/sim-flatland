@@ -1,0 +1,17 @@
+{
+  "name": "flatland-iso-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ISO 21423 IMR agent for the flatland simulation: bridges ROS 2 (via rosbridge) to an ISO 21423 fleet manager such as OpenRobOps",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@openrobops/iso21423": "file:../../iso21423/ts-sdk",
+    "mqtt": "^5.15.0",
+    "roslib": "^2.1.0"
+  }
+}

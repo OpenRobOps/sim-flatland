@@ -1,0 +1,392 @@
+#######################################################################################
+## OpenRobOps configuration for the flatland simulation driven by the ISO 21423 agent
+## (iso-agent/). Apply this folder INSTEAD of ../ros2:  inorbit apply -f oro-config/iso
+## Object ids are shared with ../ros2 so switching profiles overwrites the same dashboards.
+#######################################################################################
+
+#######################################################################################
+## DataSourceDefinition
+## The ISO ingest writes straight into OpenRobOps' built-in attributes, so these definitions
+## carry no `source` (no key-value mapping): they only set labels, units and history.
+#######################################################################################
+apiVersion: v0.1
+kind: DataSourceDefinition
+metadata:
+  id: batteryPercentage
+  scope: ""
+spec:
+  label: Battery Percentage
+  # ISO batterySoc is a 0..1 fraction, stored as-is; unit '%' makes ORO display 0.12 as "12%".
+  unit: '%'
+  precision: 0
+  timeline: {}
+---
+apiVersion: v0.1
+kind: DataSourceDefinition
+metadata:
+  id: batteryVoltage
+  scope: ""
+spec:
+  label: Battery Voltage
+  unit: V
+  precision: 2
+  timeline: {}
+---
+apiVersion: v0.1
+kind: DataSourceDefinition
+metadata:
+  id: batteryIsCharging
+  scope: ""
+spec:
+  # From ISO batteryStatus.batteryChargingState === 'CHARGING'
+  label: Charging state
+---
+apiVersion: v0.1
+kind: DataSourceDefinition
+metadata:
+  id: speedLinear
+  scope: ""
+spec:
+  label: Linear speed
+  unit: m/s
+  precision: 2
+  timeline: {}
+---
+apiVersion: v0.1
+kind: DataSourceDefinition
+metadata:
+  id: speedAngular
+  scope: ""
+spec:
+  label: Angular speed
+  unit: rad/s
+  precision: 2
+  timeline: {}
+---
+#######################################################################################
+## DashboardDefinition
+#######################################################################################
+apiVersion: v0.1
+kind: DashboardDefinition
+metadata:
+  id: welcome
+  scope: ''
+spec:
+  label: Welcome
+  order: 0
+  sections:
+  - label: ''
+    scope: robot
+    withControlWidget: false
+    widgets:
+    - type: text
+      label: Welcome
+      config:
+        text: |
+          # Welcome to your first OpenRobOps dashboard
+          
+          OpenRobOps (ORO) is an open-source robot fleet management and operations platform. 
+          It provides real-time observability, monitoring, and control for autonomous mobile robots (AMRs) — fully self-hostable, with native support for ROS and Open RMF.
+          Learn more on [https://openrobops.org/](https://openrobops.org/).
+      layout:
+        chroma: false
+        grid: 12
+  - label: 'Dashboards'
+    scope: robot
+    withControlWidget: false
+    widgets:
+    - type: text
+      label: Fleet
+      config:
+        text: |
+          [![fleet](/images/fleet.svg)](/dashboards/fleet)
+          
+          ### [Fleet](/dashboards/fleet)
+          
+          Overview of all robots in the fleet, their status and fleet-level diagnostics
+          including audit logs and incidents
+      layout:
+        chroma: false
+        grid: 4
+    - type: text
+      label: Robot
+      config:
+        text: |
+          
+          [![robot](/images/bot.svg)](/dashboards/robot)
+          
+          ### [Robot](/dashboards/robot)
+          
+          Detailed view of a single robot, including its health, telemetry, reported data, and actions
+      layout:
+        chroma: false
+        grid: 4
+    - type: text
+      label: Navigation
+      config:
+        text: |
+          [![navigation](/images/navigation.svg)](/dashboards/navigation)
+          
+          ### [Navigation](/dashboards/navigation)
+          
+          Real-time navigation status and controls on a map, including teleoperations and relocalize
+      layout:
+        chroma: false
+        grid: 4
+  - label: 'Simulation'
+    scope: robot
+    withControlWidget: false
+    widgets:
+    - type: text
+      label: Map
+      config:
+        text: |
+          ### Flatland simulator
+          
+          flatland-sim is a simple 2D simulation robot running [ROS2](https://www.ros.org/). It implements the [Flatland](https://github.com/avidbots/flatland) simulator and the [Nav2](https://github.com/ros-navigation/navigation2) navigation stack, providing a realistic simulation of the robot's behavior and navigation. It also implements a battery plugin that simulates the robot's battery state, which drains rather quickly for demo purposes, and recharges when the robot enters a charging zone.
+          
+          ### Map
+          
+          The map consists of 4 offices and a corridor. Office A and D have charging zones. 
+          
+          ```
+              ┌─────────────┬─────────────┐
+              │        dock │             │
+              │      A      │      B      │
+              └─────   ─────┴─────   ─────┘
+              │         corridor          │
+              ┌─────   ─────┬─────   ─────┐
+              │      C      │      D      │
+              │             │ dock        │
+              └─────────────┴─────────────┘
+          ```
+      layout:
+        chroma: false
+        grid: 6
+    - type: text
+      label: Action
+      config:
+        text: |
+          ### Action
+          
+          The ISO 21423 agent accepts ISO `move` and `cancelRequest` requests, which OpenRobOps sends from the built-in navigation actions:
+          
+          [NAVIGATE TO](/dashboards/navigation): Sends the robot to a point picked on the map (ISO `move`)  
+          [CANCEL NAVIGATION](/dashboards/robot): Cancels the current navigation (ISO `cancelRequest`)
+          
+          The battery, dock and message actions of the ROS2 configuration are not available: they rely on a
+          custom ROS topic that has no ISO 21423 equivalent.
+          
+          ### Reported data
+          
+          The robot publishes the ISO 21423 `status`, `odometry` and `batteryStatus` resources. OpenRobOps
+          maps them onto its built-in attributes: online state, `pose`, `speedLinear`, `speedAngular`,
+          `batteryPercentage`, `batteryVoltage` and `batteryIsCharging`. There are no key-value pairs,
+          ROS diagnostics or system vitals (CPU, disk, network) in this mode.
+      layout:
+        chroma: false
+        grid: 6
+    - type: text
+      label: Footer
+      config:
+        text: |
+          This simulation is available on [Github](https://github.com/OpenRobOps/sim-flatland) to be used as a ready-to-run docker environment
+          which includes the ORO agent as a sidecar, ready to connect to OpenRobOps.
+      layout:
+        chroma: false
+        grid: 12
+
+---
+apiVersion: v0.1
+kind: DashboardDefinition
+metadata:
+  id: fleet
+  scope: ''
+spec:
+  label: Fleet
+  order: 1
+  sections:
+  - label: Fleet
+    scope: fleet
+    widgets:
+    - config:
+        statuses:
+        - id: batteryPercentage
+          label: Battery
+      label: Fleet Status
+      layout:
+        chroma: true
+        grid: 12
+      type: fleetStatus
+    withControlWidget: true
+  - label: Details
+    scope: fleet
+    widgets:
+    - label: Fleet Log
+      layout:
+        chroma: true
+        grid: 4
+        height: 1
+      type: auditLogFleet
+    - label: Incident List
+      layout:
+        chroma: true
+        grid: 8
+        height: 1
+      type: incidentList
+    - label: Incident Timeline
+      layout:
+        chroma: true
+        grid: 12
+        height: 1
+      type: incidentTimeline
+    withControlWidget: false
+---
+apiVersion: v0.1
+kind: DashboardDefinition
+metadata:
+  id: robot
+  scope: ''
+spec:
+  label: Robot
+  order: 2
+  sections:
+  - label: Health
+    withControlWidget: true
+    scope: robot
+    widgets:
+    - config:
+        dataSources:
+        - id: batteryPercentage
+          label: Battery
+          type: gauge
+          unit: '%'
+      label: Vitals
+      layout:
+        chroma: true
+        grid: 4
+        height: 1
+      type: vitals
+    - label: Data Sources
+      type: listData
+      layout:
+        chroma: true
+        grid: 4
+        height: 1
+      config:
+        dataSources:
+        - id: batteryIsCharging
+          label: Charging state
+          type: boolean
+        - id: batteryVoltage
+          label: Battery voltage (V)
+          unit: V
+          type: text
+        - id: batteryPercentage
+          label: Battery percentage
+          unit: "%"
+          type: text
+        - id: speedLinear
+          label: Linear speed (m/s)
+          unit: m/s
+          type: text
+        - id: speedAngular
+          label: Angular speed (rad/s)
+          unit: rad/s
+          type: text
+    - config: {}
+      label: Actions
+      layout:
+        chroma: true
+        grid: 4
+        height: 1
+      type: actionsWidget
+    - type: chart
+      label: Battery
+      config:
+        chartType: linechart
+        dataSources:
+        - id: batteryPercentage
+          label: Batt %
+          precision: 1
+          scale: 100
+        - id: batteryVoltage
+          label: Batt V
+          precision: 2
+          scale: 1
+        max: 120
+        min: 0
+      layout:
+        chroma: true
+        grid: 6
+        height: 1
+    - type: chart
+      label: Speed
+      config:
+        chartType: linechart
+        dataSources:
+        - id: speedLinear
+          label: Linear (m/s)
+          precision: 2
+          scale: 1
+        - id: speedAngular
+          label: Angular (rad/s)
+          precision: 2
+          scale: 1
+      layout:
+        chroma: true
+        grid: 6
+        height: 1
+---
+apiVersion: v0.1
+kind: DashboardDefinition
+metadata:
+  id: navigation
+  scope: ''
+spec:
+  label: Navigation
+  order: 4
+  sections:
+  - label: Robot Navigation
+    withControlWidget: true
+    scope: navigation
+    widgets:
+    - label: Navigation
+      layout:
+        grid: 12
+        height: 2
+      type: navigation
+---
+#######################################################################################
+## Battery status thresholds + incident (identical to ../ros2: both act on the built-in
+## batteryPercentage attribute, a 0..1 fraction).
+## The ERROR rule is listed first on purpose: the evaluator stops at the first matching rule.
+#######################################################################################
+apiVersion: v0.1
+kind: StatusDefinition
+metadata:
+  id: batteryPercentage
+  scope: ''
+spec:
+  rules:
+  - function: BELOW
+    params: [0.15]
+    status: ERROR
+  - function: BELOW
+    params: [0.30]
+    status: WARNING
+---
+# The ROS2 profile docks the robot on low battery; there is no ISO dock action here, so the
+# incident only alerts.
+apiVersion: v0.1
+kind: IncidentDefinition
+metadata:
+  id: batteryPercentage
+  scope: ''
+spec:
+  label: Battery low
+  labelTemplate: '{{robotName}}: battery low'
+  warning:
+    severity: SEV 2
+  error:
+    severity: SEV 0

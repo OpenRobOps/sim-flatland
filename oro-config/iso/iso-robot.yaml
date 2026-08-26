@@ -1,0 +1,12 @@
+# Admits the flatland ISO 21423 robot to the OpenRobOps fleet (ORO "Gate 2").
+# metadata.id must equal ISO_ENTITY_UUID in local/iso-agent.env.sh (lowercase).
+# Apply with: inorbit apply -f iso-robot.yaml
+apiVersion: v0.1
+kind: IsoRobot
+metadata:
+  id: 7b1a9c3e-1111-4222-8333-444455556666
+  scope: ""
+spec:
+  label: flatland-iso
+  manufacturerName: OpenRobOps flatland
+  hostname: flatland

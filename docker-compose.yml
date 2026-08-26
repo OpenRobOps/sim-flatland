@@ -84,6 +84,21 @@ services:
         rm -rf /usr/local/inorbit/inorbit/agentlets/__pycache__
         exec /usr/local/inorbit/scripts/start.sh
 
+  # ISO 21423 agent (alternative to the InOrbit ROS2 agent above; see README "ISO 21423 Agent").
+  # Talks to the simulation through rosbridge (ws://localhost:9090) and to OpenRobOps over ISO 21423/MQTT.
+  # Requires local/iso-agent.env.sh. Enable with: COMPOSE_PROFILES=iso-agent docker compose up
+  iso-agent:
+    build:
+      context: ./iso-agent
+      additional_contexts:
+        iso21423: ../iso21423   # sibling checkout of github.com/OpenRobOps/iso21243 (the SDK)
+    image: ghcr.io/openrobops/flatland-iso-agent:latest
+    container_name: iso_agent
+    profiles: ["iso-agent"]
+    restart: always
+    network_mode: host
+    env_file: local/iso-agent.env.sh
+
   # Tail agent logs from a different container; it's lightweight and it helps debugging in a single docker-compose terminal
   agent-logs:
     image: busybox

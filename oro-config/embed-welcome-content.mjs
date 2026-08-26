@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
- * Embeds welcome-*.md files into config.yaml for the welcome dashboard text widgets.
- * Run after editing the .md files:
+ * Embeds welcome-*.md files into <profile>/config.yaml for the welcome dashboard text widgets.
+ * Run after editing the .md files, once per profile (the Action widget differs per profile:
+ * welcome-action.md for ros2, welcome-action-iso.md for iso):
  *
- *   node embed-welcome-content.mjs
+ *   node embed-welcome-content.mjs ros2
+ *   node embed-welcome-content.mjs iso
  */
 
 import fs from 'fs';
@@ -11,7 +13,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const configPath = path.join(__dirname, 'config.yaml');
+const profile = process.argv[2];
+if (!['ros2', 'iso'].includes(profile)) {
+  console.error('usage: node embed-welcome-content.mjs ros2|iso');
+  process.exit(1);
+}
+const configPath = path.join(__dirname, profile, 'config.yaml');
 
 const sections = [
   {
@@ -32,7 +39,7 @@ const sections = [
     label: 'Simulation',
     widgets: [
       { file: 'welcome-simulation-map.md', label: 'Map', grid: 6 },
-      { file: 'welcome-action.md', label: 'Action', grid: 6 },
+      { file: profile === 'iso' ? 'welcome-action-iso.md' : 'welcome-action.md', label: 'Action', grid: 6 },
       { file: 'welcome-footer.md', label: 'Footer', grid: 12 },
     ],
   },
@@ -83,4 +90,4 @@ config =
   config.slice(sectionsEnd);
 
 fs.writeFileSync(configPath, config);
-console.log('Updated welcome text widgets in config.yaml from .md files');
+console.log(`Updated welcome text widgets in ${profile}/config.yaml from .md files`);
