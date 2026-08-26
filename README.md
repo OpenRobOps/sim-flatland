@@ -1,6 +1,6 @@
 # Flatland Nav2 Docker Environment
 
-Docker environment for running the [avidbots/flatland](https://github.com/avidbots/flatland) 2D simulator with the full Nav2 navigation stack on ROS2 Jazzy.
+Docker environment for running the [avidbots/flatland](https://github.com/avidbots/flatland) 2D simulator with the full Nav2 navigation stack on ROS2 Jazzy — a complete simulated AMR (map, localization, navigation, battery, camera, diagnostics) for developing and testing [OpenRobOps](https://github.com/OpenRobOps/oro) without hardware. It runs in one of three modes: **standalone** (ROS 2 only, no fleet manager), **ROS2 agent** (the InOrbit ROS2 agent connects it to OpenRobOps or InOrbit over their MQTT protocol), or **ISO 21423** (an [ISO 21423](https://github.com/OpenRobOps/iso21423) agent connects it to OpenRobOps as a standards-native robot). See [Connectivity modes](#connectivity-modes).
 
 ## What's Included
 
@@ -9,11 +9,24 @@ Docker environment for running the [avidbots/flatland](https://github.com/avidbo
 - **Map Server** - Serves occupancy grid maps
 - **Rviz2** - Visualization with preconfigured layout
 - **Battery Simulation** - Velocity-based battery drain plugin with `sensor_msgs/BatteryState` output
-- **ROS2 Agent** - Connects the simulated robot to OpenRobOps (runs in a sidecar container, optional)
+- **ROS2 Agent** - InOrbit ROS2 agent sidecar connecting the simulated robot to OpenRobOps/InOrbit (optional, default on)
+- **ISO 21423 Agent** - Node.js sidecar connecting the simulated robot to OpenRobOps as an ISO 21423 robot (optional, alternative to the ROS2 agent)
 - **ROS Diagnostics** - Health monitoring of sensors, battery, TF, and Nav2 lifecycle published on `/diagnostics` and grouped on `/diagnostics_agg`
 - **Sample world** - 20x20m multi-room office with a differential-drive robot (laser, odometry, battery)
 
 ![Demo of Flatland Nav2](demo.gif)
+
+## Connectivity modes
+
+The simulation itself is the same in every mode; what changes is the sidecar that talks to the fleet manager and the OpenRobOps configuration you apply.
+
+| Mode | What runs | Start with | OpenRobOps config |
+|------|-----------|------------|-------------------|
+| **Standalone** | Simulation + Nav2 (+ rviz). No fleet manager. | `COMPOSE_PROFILES= docker compose up` | none |
+| **ROS2 agent** (default) | Simulation + [InOrbit ROS2 agent](#inorbit-agent) sidecar speaking the InOrbit/OpenRobOps MQTT protocol. Full feature set: pose, map, laser, costmaps, camera, diagnostics, key-values, actions. | `docker compose up` (`.env` sets `COMPOSE_PROFILES=agent`) | `inorbit apply -f oro-config/ros2/config.yaml` |
+| **ISO 21423** | Simulation + [ISO 21423 agent](#iso-21423-agent) sidecar speaking the ISO 21423 standard (MQTT + JSON) to OpenRobOps' ISO robots ingestion. Status, pose, speed, battery, key-values, navigation/dock/custom commands. | `COMPOSE_PROFILES=iso-agent docker compose up` | `inorbit apply -f oro-config/iso/config.yaml` + `iso/iso-robot.yaml` |
+
+Run one agent at a time: the two profiles register the same robot with the same OpenRobOps instance in different ways, and OpenRobOps itself is either in wire (ROS2 agent) or ISO mode per deployment. The `oro-config/` profiles share object ids, so switching modes and re-applying the other profile overwrites dashboards and data sources in place (see `oro-config/README`).
 
 ## Prerequisites
 
@@ -55,12 +68,11 @@ docker compose up
 docker compose run --rm flatland-nav2 --no-rviz
 ```
 
-### Run without the InOrbit agent
+### Run without an agent (standalone)
 
-An InOrbit agent sidecar is enabled by default (via `COMPOSE_PROFILES=agent` in `.env`). 
-The InOrbit agent is compatible with OpenRobOps. See [ISO 21423 Agent](#iso-21423-agent) for the standards-based alternative.
+The InOrbit ROS2 agent sidecar is enabled by default (via `COMPOSE_PROFILES=agent` in `.env`); see [Connectivity modes](#connectivity-modes) for the ISO 21423 alternative.
 
-To skip it:
+To run the simulation alone:
 
 ```bash
 COMPOSE_PROFILES= docker compose up
@@ -307,6 +319,8 @@ docker compose exec flatland-nav2 ros2 topic echo /image_raw --field encoding --
 
 ## InOrbit Agent
 
+*ROS2 agent mode — see [Connectivity modes](#connectivity-modes).*
+
 An [InOrbit ROS2 agent](https://www.inorbit.ai/) runs as a sidecar container (`inorbitai/agent:ros-jazzy-4.33.0`) alongside the simulation, connecting the simulated robot to your OpenRobOps or InOrbit instance. A second lightweight `busybox` container tails the agent log into the main `docker compose` output for easier debugging. Both services are part of the `agent` Compose profile, enabled by default via `.env`.
 
 ### Configuration
@@ -331,6 +345,8 @@ COMPOSE_PROFILES= docker compose up
 ```
 
 ## ISO 21423 Agent
+
+*ISO 21423 mode — see [Connectivity modes](#connectivity-modes). The OpenRobOps side is documented in the [ISO 21423 section of the OpenRobOps docs](https://github.com/OpenRobOps/oro/blob/main/website/docs/iso21423/overview.md).*
 
 An alternative to the InOrbit agent: a small Node.js sidecar (`iso-agent/`, image `ghcr.io/openrobops/flatland-iso-agent`) that speaks [ISO 21423](https://github.com/OpenRobOps/iso21423) directly to OpenRobOps' `isoRobots` ingestion. It reads the simulation through rosbridge (`ws://localhost:9090`, launched with the sim) and publishes ISO `status`, `odometry` and `batteryStatus`. Requests it accepts: ISO `move`/`cancelRequest` (ORO navigation) and the native ISO `dock` (ORO's Dock actions) become nav2 `NavigateToPose` goals; OpenRobOps' vendor action `customCommand` (any other `PublishToTopic` action, e.g. the battery hacks) is republished on `/inorbit/custom_command`, exactly as the InOrbit agent did. The sim's `/inorbit/custom_data` key-values (`battery_*`, `estimated_time_remaining`, `echo`) are forwarded as OpenRobOps' `customData` extension resource (ISO 21423 leaves the resource catalog open), so `keyValue` data sources and the Message actions work as with the InOrbit agent. Not covered (no ISO equivalent or no ORO ingestion yet): map, camera, laser, diagnostics tree.
 
@@ -418,8 +434,12 @@ Comment out the `diagnostics_watcher` and `diagnostics_aggregator` `Node` entrie
 flatland/
   Dockerfile                        # Multi-layer build: Box2D + flatland + Nav2
   entrypoint.sh                     # Mode-switching entrypoint with display auto-detection
-  docker-compose.yml                # X11/Wayland forwarding, GPU, host networking, InOrbit agent
+  docker-compose.yml                # X11/Wayland forwarding, GPU, host networking, agent sidecars (profiles: agent, iso-agent)
   .env                              # COMPOSE_PROFILES=agent (default profiles for docker compose)
+  oro-config/
+    ros2/config.yaml                # OpenRobOps config for ROS2 agent mode (data sources, dashboards, actions, ...)
+    iso/config.yaml                 # OpenRobOps config for ISO 21423 mode (same object ids, ISO-supported data)
+    iso/iso-robot.yaml              # Admits the ISO robot to the OpenRobOps fleet
   config/
     nav2_params.yaml                # Nav2 parameters (DWB controller, NavFn planner)
     flatland_rviz.rviz              # Rviz2 layout (map, scan, TF, costmaps, Nav2 panel, battery)
@@ -446,6 +466,7 @@ flatland/
   local/                            # Bind-mounted into agent container (gitignored)
     agent.env.sh                    # InOrbit agent credentials (INORBIT_KEY, INORBIT_URL, ...) - gitignored
     agent.env.sh.example            # Template for agent.env.sh
+    iso-agent.env.sh.example        # Template for the ISO 21423 agent (ORO_API_KEY, ORO_URL, UUIDs)
 ```
 
 ## Updating the flatland patches
