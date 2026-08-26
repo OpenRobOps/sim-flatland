@@ -54,6 +54,25 @@ export function goalActiveFrom(statusArray) {
   return (statusArray.status_list ?? []).some((g) => g.status >= 1 && g.status <= 3);
 }
 
+/**
+ * OpenRobOps' `customData` extension resource (see ORO's ingest/src/server/iso21423/customData.js):
+ * `/ISO_21423/v1/IMR/<uuid>/customData`, QoS 1, not retained, no schema.
+ */
+export const CUSTOM_DATA_RESOURCE = 'customData';
+export const CUSTOM_DATA_RESOURCE_CONFIG = { qos: 1, retain: false };
+
+/** One `key=value` line from /inorbit/custom_data -> [key, value], or null when there is no '='. */
+export function parseKeyValue(line) {
+  const i = line.indexOf('=');
+  if (i <= 0) return null;
+  return [line.slice(0, i), line.slice(i + 1)];
+}
+
+/** Accumulated pairs -> customData payload. */
+export function toCustomData(values) {
+  return { timestamp: new Date().toISOString(), values };
+}
+
 /** ISO `move` (location) or `dock` (dockLocation) properties -> nav2 NavigateToPose goal in the `map` frame. */
 export function toNavGoal(props) {
   const target = props.location ?? props.dockLocation;

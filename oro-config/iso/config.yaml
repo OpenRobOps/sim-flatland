@@ -63,6 +63,19 @@ spec:
   precision: 2
   timeline: {}
 ---
+# Key-value data: the ISO agent forwards the sim's /inorbit/custom_data as OpenRobOps'
+# `customData` extension resource, so keyValue data sources work exactly as in ../ros2.
+apiVersion: v0.1
+kind: DataSourceDefinition
+metadata:
+  id: message
+  scope: ""
+spec:
+  label: Message
+  source:
+    keyValue:
+      key: "echo"
+---
 #######################################################################################
 ## DashboardDefinition
 #######################################################################################
@@ -180,14 +193,18 @@ spec:
           **Battery**  
           [RESET](/dashboards/robot), [CHARGING](/dashboards/robot), [DISCHARGING](/dashboards/robot): simulation hacks forwarded as an OpenRobOps `customCommand` request, which the agent republishes on the sim's command topic
           
-          The Message actions of the ROS2 configuration are not available yet: their `echo` reply is key-value data, which has no ISO 21423 path.
+          **Message**  
+          [HELLO](/dashboards/robot), [MESSAGE](/dashboards/robot): Echoes a message back from the robot as an `echo` key-value  
+          [WARNING](/dashboards/robot), [ERROR](/dashboards/robot): Sets the message status, raising an incident visible in Fleet View
           
           ### Reported data
           
           The robot publishes the ISO 21423 `status`, `odometry` and `batteryStatus` resources. OpenRobOps
           maps them onto its built-in attributes: online state, `pose`, `speedLinear`, `speedAngular`,
-          `batteryPercentage`, `batteryVoltage` and `batteryIsCharging`. There are no key-value pairs,
-          ROS diagnostics or system vitals (CPU, disk, network) in this mode.
+          `batteryPercentage`, `batteryVoltage` and `batteryIsCharging`. Key-value pairs (`battery_*`,
+          `estimated_time_remaining`, `echo`) travel as OpenRobOps' `customData` extension resource, an
+          ISO 21423 deployment-defined resource. There are no ROS diagnostics or system vitals (CPU, disk,
+          network) in this mode.
       layout:
         chroma: false
         grid: 6
@@ -218,6 +235,8 @@ spec:
         statuses:
         - id: batteryPercentage
           label: Battery
+        - id: message
+          label: Message
       label: Fleet Status
       layout:
         chroma: true
@@ -306,6 +325,12 @@ spec:
         grid: 4
         height: 1
       type: actionsWidget
+    - label: Key Value pairs
+      type: keyValues
+      layout:
+        chroma: true
+        grid: 4
+        height: 1
     - type: chart
       label: Battery
       config:
@@ -367,7 +392,7 @@ spec:
 ## Same PublishToTopic actions as ../ros2. In ISO mode ORO forwards the message as an
 ## OpenRobOps `customCommand` request (battery hacks), or as the native ISO `dock` action
 ## for `dock` / `dock=<id>` (docks are configured in ORO's iso21423.robots.docks).
-## The Message actions are omitted: their `echo` reply has no ISO path yet.
+## The Message actions echo back through the `customData` extension resource (`echo` key).
 #######################################################################################
 #######################################################################################
 ## ActionDefinition
@@ -468,6 +493,70 @@ spec:
   widgets:
   - navigation
 ---
+apiVersion: v0.1
+kind: ActionDefinition
+metadata:
+  id: MessageHello
+  scope: ''
+spec:
+  label: Hello
+  group: Message
+  type: PublishToTopic
+  arguments:
+  - name: message
+    value: echo=Hello from ORO!
+  description: 'Echo a hello message back from the robot'
+  lock: true
+---
+apiVersion: v0.1
+kind: ActionDefinition
+metadata:
+  id: MessageWarning
+  scope: ''
+spec:
+  label: Warning
+  group: Message
+  type: PublishToTopic
+  arguments:
+  - name: message
+    value: echo=warning
+  description: 'Set the message status to warning'
+  lock: true
+---
+apiVersion: v0.1
+kind: ActionDefinition
+metadata:
+  id: MessageError
+  scope: ''
+spec:
+  label: Error
+  group: Message
+  type: PublishToTopic
+  arguments:
+  - name: message
+    value: echo=error
+  description: 'Set the message status to error'
+  lock: true
+---
+apiVersion: v0.1
+kind: ActionDefinition
+metadata:
+  id: MessageCustom
+  scope: ''
+spec:
+  label: Message
+  group: Message
+  type: PublishToTopic
+  arguments:
+  - name: message
+    value: echo={{text}}
+  - name: text
+    type: string
+    input:
+      control: text
+  description: 'Echo a custom message back from the robot'
+  lock: true
+---
 #######################################################################################
 ## Battery status thresholds + incident (identical to ../ros2: both act on the built-in
 ## batteryPercentage attribute, a 0..1 fraction).
@@ -501,3 +590,32 @@ spec:
     severity: SEV 2
   error:
     severity: SEV 0
+---
+# Status on the echoed message: 'error' and 'warning' values raise the
+# corresponding status; any other message is OK. The ERROR rule is listed
+# first because the evaluator stops at the first matching rule.
+apiVersion: v0.1
+kind: StatusDefinition
+metadata:
+  id: message
+  scope: ''
+spec:
+  rules:
+  - function: EQUALS
+    params: ["error"]
+    status: ERROR
+  - function: EQUALS
+    params: ["warning"]
+    status: WARNING
+---
+apiVersion: v0.1
+kind: IncidentDefinition
+metadata:
+  id: message
+  scope: ''
+spec:
+  label: Message
+  warning:
+    severity: SEV 2
+  error:
+    severity: SEV 1
