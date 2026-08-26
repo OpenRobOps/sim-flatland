@@ -36,13 +36,14 @@ export function toBatteryStatus(msg) {
 
 /**
  * Operating states from the latest telemetry snapshot.
- * @param {{goalActive:boolean, linear:number, diagLevel:number, charging:boolean, soc:number}} s
+ * @param {{goalActive:boolean, linear:number, diagLevel:number, charging:boolean, soc:number, docking?:boolean}} s
  *   diagLevel is diagnostic_msgs/DiagnosticStatus.level (0 OK, 1 WARN, 2 ERROR, 3 STALE).
  */
-export function deriveStates({ goalActive, linear, diagLevel, charging, soc }) {
+export function deriveStates({ goalActive, linear, diagLevel, charging, soc, docking = false }) {
   const states = ['MODE_AUTO', diagLevel >= 2 ? 'NOT_READY' : 'READY'];
   if (Math.abs(linear) > 0.01) states.push(linear > 0 ? 'FORWARD' : 'REVERSE');
   else states.push(goalActive ? 'STOPPED' : 'IDLE');
+  if (docking) states.push('DOCKING');
   if (charging) states.push('CHARGING');
   if (soc < 0.2) states.push('LOW_BATTERY');
   return states;
@@ -53,14 +54,15 @@ export function goalActiveFrom(statusArray) {
   return (statusArray.status_list ?? []).some((g) => g.status >= 1 && g.status <= 3);
 }
 
-/** ISO `move` properties -> nav2 NavigateToPose goal in the `map` frame. */
+/** ISO `move` (location) or `dock` (dockLocation) properties -> nav2 NavigateToPose goal in the `map` frame. */
 export function toNavGoal(props) {
+  const target = props.location ?? props.dockLocation;
   const yaw = props.orientation?.yaw ?? 0;
   return {
     pose: {
       header: { frame_id: 'map' },
       pose: {
-        position: { x: props.location.x, y: props.location.y, z: 0 },
+        position: { x: target.x, y: target.y, z: 0 },
         orientation: { x: 0, y: 0, z: Math.sin(yaw / 2), w: Math.cos(yaw / 2) },
       },
     },

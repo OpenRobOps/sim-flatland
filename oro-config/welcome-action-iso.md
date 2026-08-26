@@ -5,8 +5,13 @@ The ISO 21423 agent accepts ISO `move` and `cancelRequest` requests, which OpenR
 [NAVIGATE TO](/dashboards/navigation): Sends the robot to a point picked on the map (ISO `move`)  
 [CANCEL NAVIGATION](/dashboards/robot): Cancels the current navigation (ISO `cancelRequest`)
 
-The battery, dock and message actions of the ROS2 configuration are not available: they rely on a
-custom ROS topic that has no ISO 21423 equivalent.
+**Dock**  
+[DOCK A](/dashboards/robot), [DOCK D](/dashboards/robot), [DOCK (NEAREST)](/dashboards/robot): sent as the native ISO `dock` action (`dockActions: CHARGE`); the agent navigates to the charging zone and the simulated battery starts charging there
+
+**Battery**  
+[RESET](/dashboards/robot), [CHARGING](/dashboards/robot), [DISCHARGING](/dashboards/robot): simulation hacks forwarded as an OpenRobOps `customCommand` request, which the agent republishes on the sim's command topic
+
+The Message actions of the ROS2 configuration are not available yet: their `echo` reply is key-value data, which has no ISO 21423 path.
 
 ### Reported data
 

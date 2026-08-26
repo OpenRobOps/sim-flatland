@@ -332,7 +332,7 @@ COMPOSE_PROFILES= docker compose up
 
 ## ISO 21423 Agent
 
-An alternative to the InOrbit agent: a small Node.js sidecar (`iso-agent/`, image `ghcr.io/openrobops/flatland-iso-agent`) that speaks [ISO 21423](https://github.com/OpenRobOps/iso21423) directly to OpenRobOps' `isoRobots` ingestion. It reads the simulation through rosbridge (`ws://localhost:9090`, launched with the sim) and publishes ISO `status`, `odometry` and `batteryStatus`; ORO `move`/`cancelRequest` requests become nav2 `NavigateToPose` goals. Not covered (no ISO equivalent or no ORO ingestion yet): map, camera, laser, custom key-value data, diagnostics tree.
+An alternative to the InOrbit agent: a small Node.js sidecar (`iso-agent/`, image `ghcr.io/openrobops/flatland-iso-agent`) that speaks [ISO 21423](https://github.com/OpenRobOps/iso21423) directly to OpenRobOps' `isoRobots` ingestion. It reads the simulation through rosbridge (`ws://localhost:9090`, launched with the sim) and publishes ISO `status`, `odometry` and `batteryStatus`. Requests it accepts: ISO `move`/`cancelRequest` (ORO navigation) and the native ISO `dock` (ORO's Dock actions) become nav2 `NavigateToPose` goals; OpenRobOps' vendor action `customCommand` (any other `PublishToTopic` action, e.g. the battery hacks) is republished on `/inorbit/custom_command`, exactly as the InOrbit agent did. Not covered (no ISO equivalent or no ORO ingestion yet): map, camera, laser, custom key-value data (so the Message actions' `echo` never comes back), diagnostics tree.
 
 Run it *instead of* the InOrbit agent:
 
