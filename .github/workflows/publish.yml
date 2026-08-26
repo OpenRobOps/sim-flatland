@@ -27,3 +27,17 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/openrobops/flatland-nav2:latest
+
+      # The ISO 21423 SDK repo is private: ISO21423_READ_TOKEN is a PAT with read access to it.
+      - uses: actions/checkout@v7
+        with:
+          repository: OpenRobOps/iso21243
+          token: ${{ secrets.ISO21423_READ_TOKEN }}
+          path: iso21423
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: ./iso-agent
+          build-contexts: iso21423=./iso21423
+          push: true
+          tags: ghcr.io/openrobops/flatland-iso-agent:latest

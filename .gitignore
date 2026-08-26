@@ -17,3 +17,7 @@ __pycache__/
 # Editor temp files
 *~
 *.swp
+
+# ISO agent (Node)
+iso-agent/node_modules/
+iso-agent/package-lock.json

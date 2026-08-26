@@ -184,6 +184,15 @@ def generate_launch_description():
         ],
     )
 
+    # rosbridge websocket on :9090 — used by the ISO 21423 agent sidecar (iso-agent/)
+    rosbridge = Node(
+        package='rosbridge_server',
+        executable='rosbridge_websocket',
+        name='rosbridge_websocket',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time, 'port': 9090}],
+    )
+
     # Lifecycle manager for navigation nodes
     lifecycle_manager_navigation = Node(
         package='nav2_lifecycle_manager',
@@ -238,5 +247,6 @@ def generate_launch_description():
         republisher,
         diagnostics_watcher,
         diagnostics_aggregator,
+        rosbridge,
         rviz_node,
     ])

@@ -1,7 +1,19 @@
 # OpenRobOps configs
 
-This folder contains YAML files that need to be applied to OpenRobOps to configure data sources, 
+This folder contains YAML files that need to be applied to OpenRobOps to configure data sources,
 actions and other settings in OpenRobOps specific to this flatland simulation.
+
+There are two profiles, one per agent. Apply EITHER one, never both:
+
+| Folder  | Agent                                | Contents |
+|---------|--------------------------------------|----------|
+| `ros2/` | InOrbit ROS2 agent (compose `agent`) | key-value and ROS-diagnostics data sources, robot/fleet/welcome/navigation dashboards, battery/dock/message actions, ROS agentlet ModuleStates, statuses and incidents |
+| `iso/`  | ISO 21423 agent (compose `iso-agent`) | data sources over the built-in attributes the ISO ingest fills (`batteryPercentage`, `batteryVoltage`, `batteryIsCharging`, `speedLinear`, `speedAngular`), the same dashboards reduced to that data, the battery status/incident, and `iso-robot.yaml` (robot admission) |
+
+Dashboards, data sources, statuses and incidents use the same ids in both profiles, so switching
+profiles overwrites them in place. Objects that exist only in `ros2/` (actions, ModuleStates,
+`message`/`navigationActivity`/`nav2Health`) are left behind when switching to `iso/`; clear them
+with `inorbit delete -f ros2/config.yaml` first if you want a clean slate.
 
 ## Welcome page content
 
@@ -29,10 +41,12 @@ The Welcome dashboard uses seven text widgets across three sections:
 | `welcome-action.md` | 6 columns | Commands and key-value telemetry |
 | `welcome-footer.md` | full width | GitHub / docker environment link |
 
-After editing any file, regenerate `config.yaml`:
+The Action widget differs per profile: `welcome-action.md` (ros2) vs `welcome-action-iso.md` (iso).
+After editing any file, regenerate the profile's `config.yaml`:
 
 ```
-node embed-welcome-content.mjs
+node embed-welcome-content.mjs ros2
+node embed-welcome-content.mjs iso
 ```
 
 ## Apply configs
@@ -40,5 +54,6 @@ node embed-welcome-content.mjs
 To apply configs, use InOrbit's CLI. First set up `INORBIT_CLI_API_KEY` and
 `INORBIT_CLI_URL` (e.g. http://oro.example.com/api) environment variables, then:
 ```
-inorbit apply -f config.yaml
+inorbit apply -f ros2/config.yaml                                    # InOrbit ROS2 agent
+inorbit apply -f iso/config.yaml && inorbit apply -f iso/iso-robot.yaml   # ISO 21423 agent
 ```

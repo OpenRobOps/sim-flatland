@@ -58,7 +58,7 @@ docker compose run --rm flatland-nav2 --no-rviz
 ### Run without the InOrbit agent
 
 An InOrbit agent sidecar is enabled by default (via `COMPOSE_PROFILES=agent` in `.env`). 
-The InOrbit agent is compatible with OpenRobOps (an option to run the OpenRobOps agent will replace this in the future).
+The InOrbit agent is compatible with OpenRobOps. See [ISO 21423 Agent](#iso-21423-agent) for the standards-based alternative.
 
 To skip it:
 
@@ -330,6 +330,38 @@ The agent is opt-out. To skip both the agent and its log tail:
 COMPOSE_PROFILES= docker compose up
 ```
 
+## ISO 21423 Agent
+
+An alternative to the InOrbit agent: a small Node.js sidecar (`iso-agent/`, image `ghcr.io/openrobops/flatland-iso-agent`) that speaks [ISO 21423](https://github.com/OpenRobOps/iso21423) directly to OpenRobOps' `isoRobots` ingestion. It reads the simulation through rosbridge (`ws://localhost:9090`, launched with the sim) and publishes ISO `status`, `odometry` and `batteryStatus`; ORO `move`/`cancelRequest` requests become nav2 `NavigateToPose` goals. Not covered (no ISO equivalent or no ORO ingestion yet): map, camera, laser, custom key-value data, diagnostics tree.
+
+Run it *instead of* the InOrbit agent:
+
+```bash
+cp local/iso-agent.env.sh.example local/iso-agent.env.sh   # set ORO_API_KEY (a robotApiKeys value), ORO_URL, the UUIDs
+COMPOSE_PROFILES=iso-agent docker compose up
+```
+
+### OpenRobOps setup
+
+1. Enable ISO robots in ORO settings (`iso21423.robots.enabled`, `imrfmId`, ingest broker credential — see ORO's `docs/iso21423-robots.md`) and calibrate the CCS as the identity, since flatland's map origin is `[0,0,0]`:
+   ```json
+   "iso21423": { "ccs": { "id": "0b1c2d3e-4f50-4a6b-8c7d-9e0f1a2b3c4d", "referencePoints": [
+     { "map": { "x": 0,  "y": 0  }, "ccs": { "x": 0,  "y": 0  } },
+     { "map": { "x": 10, "y": 0  }, "ccs": { "x": 10, "y": 0  } },
+     { "map": { "x": 0,  "y": 10 }, "ccs": { "x": 0,  "y": 10 } } ] } }
+   ```
+   `ccs.id` must equal `ISO_CCS_ID` in `local/iso-agent.env.sh`; poses are dropped by ORO otherwise.
+2. Apply the ISO profile of the ORO config: `inorbit apply -f oro-config/iso/config.yaml` then `inorbit apply -f oro-config/iso/iso-robot.yaml` (data sources, dashboards, and `iso-robot.yaml`, which admits the robot — its `metadata.id` must equal `ISO_ENTITY_UUID`). Apply `oro-config/ros2/config.yaml` instead when running the InOrbit agent; see `oro-config/README`. Until this is done the agent logs `iso_mqtt_config -> 403` and retries every 10 s.
+
+The agent then fetches its own broker credentials from `POST /iso_mqtt_config` with the api key — no MQTT settings live on the robot side.
+
+### Development
+
+```bash
+cd iso-agent && npm install && npm test     # expects the SDK repo checked out at ../../iso21423
+docker compose build iso-agent              # same sibling checkout is passed as a build context
+```
+
 ## Diagnostics
 
 A `diagnostics_watcher` node publishes ROS 2 diagnostics on `/diagnostics`, and a `diagnostic_aggregator` groups them into a tree on `/diagnostics_agg`. Both are launched by default with the rest of the simulation.
@@ -398,6 +430,7 @@ flatland/
     battery.h                       # Battery simulation plugin header
     battery.cpp                     # Battery simulation plugin implementation
   republisher/                      # Project ROS2 package - InOrbit custom_data bridge
+  iso-agent/                        # ISO 21423 agent sidecar (Node.js, own image)
   diagnostics_watcher/              # Project ROS2 package - /diagnostics publisher
   maps/
     sample_map.yaml                 # Map metadata
