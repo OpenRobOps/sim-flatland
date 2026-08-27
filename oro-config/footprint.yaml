@@ -1,0 +1,34 @@
+# Robot footprint for the flatland simulation, applied fleet-wide (metadata.id: system): the
+# turtlebot body is a 0.22 m circle (worlds/turtlebot.model.yaml, base_link footprint), drawn here
+# as a 16-point polygon in the robot frame (+x forward), metres. Profile-independent:
+#
+#   inorbit apply -f oro-config/footprint.yaml
+#
+# ISO robots also report their own outline in the identity's imrFootprint; a configured
+# RobotFootprint (system or per-robot) overrides it. Same spec shape as InOrbit's RobotFootprint.
+apiVersion: v0.1
+kind: RobotFootprint
+metadata:
+  id: system
+  scope: ""
+spec:
+  footprint:
+    - {x: 0.22, y: 0.0}
+    - {x: 0.2033, y: 0.0842}
+    - {x: 0.1556, y: 0.1556}
+    - {x: 0.0842, y: 0.2033}
+    - {x: 0.0, y: 0.22}
+    - {x: -0.0842, y: 0.2033}
+    - {x: -0.1556, y: 0.1556}
+    - {x: -0.2033, y: 0.0842}
+    - {x: -0.22, y: 0.0}
+    - {x: -0.2033, y: -0.0842}
+    - {x: -0.1556, y: -0.1556}
+    - {x: -0.0842, y: -0.2033}
+    - {x: -0.0, y: -0.22}
+    - {x: 0.0842, y: -0.2033}
+    - {x: 0.1556, y: -0.1556}
+    - {x: 0.2033, y: -0.0842}
+  radius: 0.22
+  primaryColor: "#2A3C98"
+  secondaryColor: "#CCCCCC"

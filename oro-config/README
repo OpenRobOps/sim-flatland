@@ -14,6 +14,10 @@ There are two profiles, one per agent. Apply EITHER one, never both:
 shared `SpatialAnnotation`; the header comment records the `png2map.py` command that generated it.
 Apply it with either profile — for the ISO profile it is the only map the robot has.
 
+`footprint.yaml` (profile-independent) sets the fleet-wide `RobotFootprint` (the 0.22 m turtlebot
+body as a polygon) so the Navigation widget draws the robot's real outline instead of the default
+ring. ISO robots also report theirs through the identity's `imrFootprint`; config overrides it.
+
 Dashboards, data sources, statuses and incidents use the same ids in both profiles, so switching
 profiles overwrites them in place. Objects that exist only in `ros2/` (actions, ModuleStates,
 `message`/`navigationActivity`/`nav2Health`) are left behind when switching to `iso/`; clear them
@@ -61,4 +65,5 @@ To apply configs, use InOrbit's CLI. First set up `INORBIT_CLI_API_KEY` and
 inorbit apply -f ros2/config.yaml                                    # InOrbit ROS2 agent
 inorbit apply -f iso/config.yaml && inorbit apply -f iso/iso-robot.yaml   # ISO 21423 agent
 inorbit apply -f maps.yaml                                           # shared map, either profile
+inorbit apply -f footprint.yaml                                      # fleet footprint, either profile
 ```
