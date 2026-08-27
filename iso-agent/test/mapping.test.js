@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { assertValid } from '@openrobops/iso21423/schema';
 import {
   toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal, yawFromQuaternion, parseKeyValue, toCustomData, throttle,
-  circlePolygon, imrDetails } from '../src/mapping.js';
+  circlePolygon, imrDetails, roundedRectPolygon, FLATLAND_FOOTPRINT } from '../src/mapping.js';
 
 const ts = () => new Date().toISOString();
 
@@ -82,8 +82,7 @@ test('imrDetails is a spec-valid IMR identity with a 16-point footprint of the 0
   const d = imrDetails({ uuid: '7b1a9c3e-1111-4222-8333-444455556666', version: '1.2.3' });
   assert.equal(d.imrModel, 'flatland-nav2');
   assert.equal(d.imrSerialNumber, '7b1a9c3e-1111-4222-8333-444455556666');
-  assert.equal(d.imrFootprint.length, 16);
-  for (const p of d.imrFootprint) assert.ok(Math.abs(Math.hypot(p.x, p.y) - 0.22) < 1e-3);
+  assert.deepEqual(d.imrFootprint, FLATLAND_FOOTPRINT);
   assert.deepEqual(d.imrWorkingArea, d.imrFootprint);
   assert.equal(d.imrHeight, 0.4);
   assert.deepEqual(d.softwareVersions, [{ moduleName: 'iso-agent', moduleVersion: '1.2.3' }]);
@@ -101,4 +100,14 @@ test('circlePolygon: n points evenly spaced on the given radius', () => {
   assert.equal(pts.length, 4);
   assert.deepEqual(pts[0], { x: 1, y: 0 });
   assert.ok(Math.abs(pts[1].x) < 1e-3 && Math.abs(pts[1].y - 1) < 1e-3);
+});
+
+test('roundedRectPolygon spans the requested length/width and stays inside the box', () => {
+  const pts = roundedRectPolygon(0.44, 0.28, 0.06);
+  assert.equal(pts.length, 20);
+  const xs = pts.map((p) => p.x); const ys = pts.map((p) => p.y);
+  assert.equal(Math.max(...xs), 0.22); assert.equal(Math.min(...xs), -0.22);
+  assert.equal(Math.max(...ys), 0.14); assert.equal(Math.min(...ys), -0.14);
+  // a corner point sits strictly inside the sharp-cornered box
+  assert.ok(pts.some((p) => Math.abs(p.x) > 0.16 && Math.abs(p.y) > 0.08 && Math.abs(p.x) < 0.22 && Math.abs(p.y) < 0.14));
 });

@@ -97,9 +97,32 @@ export function circlePolygon(radius, n = 16) {
   });
 }
 
+
+/**
+ * Rounded rectangle centred on the robot origin (+x forward): `length` along x, `width` along y,
+ * corners of radius `r` drawn with `segs` arc segments each. Counter-clockwise from the front-right
+ * corner. Matches the nav2 costmap footprint (config/nav2_params.yaml) rather than the sim's
+ * circular physics body, so the map shows what the planner treats as the robot.
+ */
+export function roundedRectPolygon(length, width, r, segs = 4) {
+  const hx = length / 2 - r; const hy = width / 2 - r;
+  const corners = [[hx, -hy, -Math.PI / 2], [hx, hy, 0], [-hx, hy, Math.PI / 2], [-hx, -hy, Math.PI]];
+  const pts = [];
+  for (const [cx, cy, a0] of corners) {
+    for (let i = 0; i <= segs; i++) {
+      const a = a0 + (Math.PI / 2) * (i / segs);
+      pts.push({ x: +(cx + r * Math.cos(a)).toFixed(4), y: +(cy + r * Math.sin(a)).toFixed(4) });
+    }
+  }
+  return pts;
+}
+
+/** The flatland robot's outline: nav2's 0.44 x 0.28 m footprint with 0.06 m rounded corners. */
+export const FLATLAND_FOOTPRINT = roundedRectPolygon(0.44, 0.28, 0.06);
+
 /** ISO §3.1 ImrDetails for the flatland robot; all six required fields present. */
 export function imrDetails({ uuid, version }) {
-  const footprint = circlePolygon(0.22);
+  const footprint = FLATLAND_FOOTPRINT;
   return {
     imrModel: 'flatland-nav2',
     imrSerialNumber: uuid,
