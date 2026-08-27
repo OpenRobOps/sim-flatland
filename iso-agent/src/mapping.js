@@ -88,3 +88,17 @@ export function toNavGoal(props) {
     behavior_tree: '',
   };
 }
+
+/**
+ * Wraps `fn` so it runs at most once per `ms` milliseconds; calls in between are dropped
+ * (latest-value semantics are not needed: the final outcome is reported separately).
+ */
+export function throttle(fn, ms) {
+  let last = -Infinity;
+  return (...args) => {
+    const now = Date.now();
+    if (now - last < ms) return;
+    last = now;
+    fn(...args);
+  };
+}

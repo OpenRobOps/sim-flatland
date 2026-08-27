@@ -5,8 +5,7 @@ import { Ros, Topic, Action } from 'roslib';
 import { Iso21423Client, registerExtensionResource } from '@openrobops/iso21423';
 import {
   toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal,
-  parseKeyValue, toCustomData, CUSTOM_DATA_RESOURCE, CUSTOM_DATA_RESOURCE_CONFIG,
-} from './mapping.js';
+  parseKeyValue, toCustomData, CUSTOM_DATA_RESOURCE, CUSTOM_DATA_RESOURCE_CONFIG, throttle } from './mapping.js';
 
 const env = (k, d) => {
   const v = process.env[k] ?? d;
@@ -19,6 +18,9 @@ const ORO_URL = env('ORO_URL').replace(/\/$/, '');
 const ORO_API_KEY = env('ORO_API_KEY');
 const ROSBRIDGE_URL = env('ROSBRIDGE_URL', 'ws://localhost:9090');
 const ODOM_HZ = Number(env('ISO_ODOMETRY_HZ', '2'));
+// nav2 streams NavigateToPose feedback several times a second; each ctx.progress() becomes an ISO
+// request status publish, so cap the rate the fleet manager sees.
+const PROGRESS_MIN_MS = Number(env('ISO_PROGRESS_MIN_MS', '2000'));
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -117,9 +119,10 @@ async function main() {
   // ---- ISO move/dock -> nav2 NavigateToPose. cancelRequest is handled by the SDK and surfaces as ctx.signal. ----
   const nav = new Action({ ros, name: '/navigate_to_pose', actionType: 'nav2_msgs/action/NavigateToPose' });
   const navigate = (props, ctx) => new Promise((resolve) => {
+    const progress = throttle((fb) => ctx.progress({ distanceRemaining: fb.distance_remaining }), PROGRESS_MIN_MS);
     const goalId = nav.sendGoal(toNavGoal(props),
       () => resolve(ctx.succeeded()),
-      (fb) => ctx.progress({ distanceRemaining: fb.distance_remaining }),
+      progress,
       (err) => resolve(ctx.aborted('GENERAL_FAILURE', String(err))));
     ctx.signal.addEventListener('abort', () => { if (goalId) nav.cancelGoal(goalId); resolve(ctx.aborted('REJECTED', 'canceled')); });
   });
