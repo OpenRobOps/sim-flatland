@@ -86,7 +86,10 @@ test('imrDetails is a spec-valid IMR identity with a 16-point footprint of the 0
   for (const p of d.imrFootprint) assert.ok(Math.abs(Math.hypot(p.x, p.y) - 0.22) < 1e-3);
   assert.deepEqual(d.imrWorkingArea, d.imrFootprint);
   assert.equal(d.imrHeight, 0.4);
-  assert.deepEqual(d.softwareVersions, [{ name: 'iso-agent', version: '1.2.3' }]);
+  assert.deepEqual(d.softwareVersions, [{ moduleName: 'iso-agent', moduleVersion: '1.2.3' }]);
+  // The compiled schema's entityIdentity.details is `type: "object"` (unconstrained), so it won't
+  // catch a wrong ImrDetails field name — assert moduleName/moduleVersion (SoftwareVersion, above)
+  // and the other field names explicitly instead of relying on assertValid for them.
   assertValid('entityIdentity', {
     id: '7b1a9c3e-1111-4222-8333-444455556666', timestamp: ts(), entityType: 'IMR', manufacturerName: 'x',
     capabilities: { provides: [], accepts: { requests: [] } }, details: d,

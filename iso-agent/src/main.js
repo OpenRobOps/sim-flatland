@@ -2,10 +2,15 @@
 // status/odometry/batteryStatus to the fleet manager's broker, and serves ISO `move` requests
 // as nav2 NavigateToPose goals. Configuration is env-only (see ../local/iso-agent.env.sh.example).
 import { Ros, Topic, Action } from 'roslib';
+import { createRequire } from 'node:module';
 import { Iso21423Client, registerExtensionResource } from '@openrobops/iso21423';
 import {
   toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal,
   parseKeyValue, toCustomData, CUSTOM_DATA_RESOURCE, CUSTOM_DATA_RESOURCE_CONFIG, throttle, imrDetails } from './mapping.js';
+
+// process.env.npm_package_version is only set when started via `npm run`; the Dockerfile's
+// `CMD ["node", "src/main.js"]` bypasses npm, so read the version straight from package.json.
+const { version: AGENT_VERSION } = createRequire(import.meta.url)('../package.json');
 
 const env = (k, d) => {
   const v = process.env[k] ?? d;
@@ -51,7 +56,7 @@ async function main() {
   client.on('diagnostic', (e) => log('diagnostic', e.code, JSON.stringify(e.detail ?? '')));
   const imr = await client.registerSelfEntity({
     entityUuid: ENTITY_UUID, entityType: 'IMR', manufacturerName: 'OpenRobOps flatland',
-    details: imrDetails({ uuid: ENTITY_UUID, version: process.env.npm_package_version || '0.0.0' }),
+    details: imrDetails({ uuid: ENTITY_UUID, version: AGENT_VERSION }),
     capabilities: {
       provides: ['status', 'odometry', 'batteryStatus', CUSTOM_DATA_RESOURCE],
       // `customCommand` is OpenRobOps' vendor action type: passthrough of PublishToTopic actions.

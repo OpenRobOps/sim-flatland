@@ -106,7 +106,7 @@ export function imrDetails({ uuid, version }) {
     imrFootprint: footprint,
     imrWorkingArea: footprint,
     imrHeight: 0.4,
-    softwareVersions: [{ name: 'iso-agent', version }],
+    softwareVersions: [{ moduleName: 'iso-agent', moduleVersion: version }],
   };
 }
 
