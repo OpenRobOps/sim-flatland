@@ -2,8 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertValid } from '@openrobops/iso21423/schema';
 import {
-  toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal, yawFromQuaternion, parseKeyValue, toCustomData,
-} from '../src/mapping.js';
+  toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal, yawFromQuaternion, parseKeyValue, toCustomData, throttle } from '../src/mapping.js';
 
 const ts = () => new Date().toISOString();
 
@@ -62,4 +61,18 @@ test('custom_data key=value parsing keeps = inside the value and rejects keyless
   const d = toCustomData({ echo: 'hi' });
   assert.deepEqual(d.values, { echo: 'hi' });
   assert.ok(!Number.isNaN(Date.parse(d.timestamp)));
+});
+
+test('throttle: runs the first call, drops calls inside the window, runs again after it', () => {
+  const calls = [];
+  const realNow = Date.now;
+  let now = 1_000_000;
+  Date.now = () => now;
+  try {
+    const t = throttle((v) => calls.push(v), 2000);
+    t('a'); t('b'); now += 1999; t('c'); now += 1; t('d'); t('e');
+  } finally {
+    Date.now = realNow;
+  }
+  assert.deepEqual(calls, ['a', 'd']);
 });

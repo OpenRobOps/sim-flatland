@@ -480,8 +480,11 @@ no longer applies, so upstream drift cannot silently regress the
 build.
 
 The first ten patches are upstream-compat fixes (candidates for a
-PR to avidbots); `0011-*` and `0012-*` are project-specific
-registration of the battery plugin.
+PR to avidbots); `0011-*`/`0012-*` and `0014-*`/`0015-*` are
+project-specific registration of the battery and camera plugins;
+`0016-*` fixes `/odom` twist being published in the world frame
+instead of the body frame (negative linear speed when driving west) --
+also an upstream candidate.
 
 ### Editing a patch / adding a new one
 
