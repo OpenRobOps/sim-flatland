@@ -5,7 +5,7 @@ import { Ros, Topic, Action } from 'roslib';
 import { Iso21423Client, registerExtensionResource } from '@openrobops/iso21423';
 import {
   toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal,
-  parseKeyValue, toCustomData, CUSTOM_DATA_RESOURCE, CUSTOM_DATA_RESOURCE_CONFIG, throttle } from './mapping.js';
+  parseKeyValue, toCustomData, CUSTOM_DATA_RESOURCE, CUSTOM_DATA_RESOURCE_CONFIG, throttle, imrDetails } from './mapping.js';
 
 const env = (k, d) => {
   const v = process.env[k] ?? d;
@@ -51,7 +51,7 @@ async function main() {
   client.on('diagnostic', (e) => log('diagnostic', e.code, JSON.stringify(e.detail ?? '')));
   const imr = await client.registerSelfEntity({
     entityUuid: ENTITY_UUID, entityType: 'IMR', manufacturerName: 'OpenRobOps flatland',
-    details: { model: 'flatland-nav2' },
+    details: imrDetails({ uuid: ENTITY_UUID, version: process.env.npm_package_version || '0.0.0' }),
     capabilities: {
       provides: ['status', 'odometry', 'batteryStatus', CUSTOM_DATA_RESOURCE],
       // `customCommand` is OpenRobOps' vendor action type: passthrough of PublishToTopic actions.

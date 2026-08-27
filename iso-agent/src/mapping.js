@@ -89,6 +89,27 @@ export function toNavGoal(props) {
   };
 }
 
+/** Regular polygon approximating the turtlebot body circle (worlds/turtlebot.model.yaml: radius 0.22). */
+export function circlePolygon(radius, n = 16) {
+  return Array.from({ length: n }, (_, i) => {
+    const a = (2 * Math.PI * i) / n;
+    return { x: +(radius * Math.cos(a)).toFixed(4), y: +(radius * Math.sin(a)).toFixed(4) };
+  });
+}
+
+/** ISO §3.1 ImrDetails for the flatland robot; all six required fields present. */
+export function imrDetails({ uuid, version }) {
+  const footprint = circlePolygon(0.22);
+  return {
+    imrModel: 'flatland-nav2',
+    imrSerialNumber: uuid,
+    imrFootprint: footprint,
+    imrWorkingArea: footprint,
+    imrHeight: 0.4,
+    softwareVersions: [{ name: 'iso-agent', version }],
+  };
+}
+
 /**
  * Wraps `fn` so it runs at most once per `ms` milliseconds; calls in between are dropped
  * (latest-value semantics are not needed: the final outcome is reported separately).
