@@ -103,11 +103,11 @@ test('circlePolygon: n points evenly spaced on the given radius', () => {
 });
 
 test('roundedRectPolygon spans the requested length/width and stays inside the box', () => {
-  const pts = roundedRectPolygon(0.44, 0.28, 0.06);
+  const pts = roundedRectPolygon(0.60, 0.38, 0.08);
   assert.equal(pts.length, 20);
   const xs = pts.map((p) => p.x); const ys = pts.map((p) => p.y);
-  assert.equal(Math.max(...xs), 0.22); assert.equal(Math.min(...xs), -0.22);
-  assert.equal(Math.max(...ys), 0.14); assert.equal(Math.min(...ys), -0.14);
+  assert.equal(Math.max(...xs), 0.3); assert.equal(Math.min(...xs), -0.3);
+  assert.equal(Math.max(...ys), 0.19); assert.equal(Math.min(...ys), -0.19);
   // a corner point sits strictly inside the sharp-cornered box
-  assert.ok(pts.some((p) => Math.abs(p.x) > 0.16 && Math.abs(p.y) > 0.08 && Math.abs(p.x) < 0.22 && Math.abs(p.y) < 0.14));
+  assert.ok(pts.some((p) => Math.abs(p.x) > 0.22 && Math.abs(p.y) > 0.11 && Math.abs(p.x) < 0.3 && Math.abs(p.y) < 0.19));
 });
