@@ -1,4 +1,5 @@
 // Pure ROS 2 message -> ISO 21423 resource mappings. No I/O, unit-tested in test/mapping.test.js.
+import { nowTimestamp } from '@openrobops/iso21423';
 
 /** geometry_msgs/Quaternion -> yaw (rad). */
 export function yawFromQuaternion({ x, y, z, w }) {
@@ -134,6 +135,14 @@ export function imrDetails({ uuid, version }) {
     imrHeight: 0.4,
     softwareVersions: [{ moduleName: 'iso-agent', moduleVersion: version }],
   };
+}
+
+/** nav_msgs/Path → ISO stamped CCS points. nav2 leaves per-pose stamps at 0, so all points share `now`. */
+export function toStampedPoints(ccsId, pathMsg) {
+  const timestamp = nowTimestamp();
+  return ((pathMsg && pathMsg.poses) || []).map((p) => ({
+    timestamp, locationPoint: { ccsId, x: p.pose.position.x, y: p.pose.position.y, z: 0 },
+  }));
 }
 
 /**
