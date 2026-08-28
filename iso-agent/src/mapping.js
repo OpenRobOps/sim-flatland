@@ -89,6 +89,53 @@ export function toNavGoal(props) {
   };
 }
 
+/** Regular polygon approximating the turtlebot body circle (worlds/turtlebot.model.yaml: radius 0.22). */
+export function circlePolygon(radius, n = 16) {
+  return Array.from({ length: n }, (_, i) => {
+    const a = (2 * Math.PI * i) / n;
+    return { x: +(radius * Math.cos(a)).toFixed(4), y: +(radius * Math.sin(a)).toFixed(4) };
+  });
+}
+
+
+/**
+ * Rounded rectangle centred on the robot origin (+x forward): `length` along x, `width` along y,
+ * corners of radius `r` drawn with `segs` arc segments each. Counter-clockwise from the front-right
+ * corner.
+ */
+export function roundedRectPolygon(length, width, r, segs = 4) {
+  const hx = length / 2 - r; const hy = width / 2 - r;
+  const corners = [[hx, -hy, -Math.PI / 2], [hx, hy, 0], [-hx, hy, Math.PI / 2], [-hx, -hy, Math.PI]];
+  const pts = [];
+  for (const [cx, cy, a0] of corners) {
+    for (let i = 0; i <= segs; i++) {
+      const a = a0 + (Math.PI / 2) * (i / segs);
+      pts.push({ x: +(cx + r * Math.cos(a)).toFixed(4), y: +(cy + r * Math.sin(a)).toFixed(4) });
+    }
+  }
+  return pts;
+}
+
+/**
+ * The flatland robot's outline as drawn on the map: nav2's 0.44 x 0.28 m costmap footprint
+ * (config/nav2_params.yaml) enlarged proportionally to 0.60 x 0.38 m so it reads as a robot at
+ * fleet zoom levels; 0.08 m rounded corners, 20 points.
+ */
+export const FLATLAND_FOOTPRINT = roundedRectPolygon(0.60, 0.38, 0.08);
+
+/** ISO §3.1 ImrDetails for the flatland robot; all six required fields present. */
+export function imrDetails({ uuid, version }) {
+  const footprint = FLATLAND_FOOTPRINT;
+  return {
+    imrModel: 'flatland-nav2',
+    imrSerialNumber: uuid,
+    imrFootprint: footprint,
+    imrWorkingArea: footprint,
+    imrHeight: 0.4,
+    softwareVersions: [{ moduleName: 'iso-agent', moduleVersion: version }],
+  };
+}
+
 /**
  * Wraps `fn` so it runs at most once per `ms` milliseconds; calls in between are dropped
  * (latest-value semantics are not needed: the final outcome is reported separately).

@@ -1,0 +1,41 @@
+# Robot footprint for the flatland simulation, applied fleet-wide (metadata.id: system). The sim's
+# physics body is a 0.22 m circle and nav2 plans with a 0.44 x 0.28 m rectangle
+# (config/nav2_params.yaml `footprint`); the map draws that rectangle enlarged proportionally to
+# 0.60 x 0.38 m so it reads as a robot at fleet zoom levels: a rounded rectangle (0.08 m corners,
+# 20 points) in the robot frame (+x forward), metres. Profile-independent:
+#
+#   inorbit apply -f oro-config/footprint.yaml
+#
+# ISO robots also report the same outline in the identity's imrFootprint (see
+# iso-agent/src/mapping.js FLATLAND_FOOTPRINT); a configured RobotFootprint (system or per-robot)
+# overrides it. Same spec shape as InOrbit's RobotFootprint.
+apiVersion: v0.1
+kind: RobotFootprint
+metadata:
+  id: system
+  scope: ""
+spec:
+  footprint:
+    - {x: 0.22, y: -0.19}
+    - {x: 0.2506, y: -0.1839}
+    - {x: 0.2766, y: -0.1666}
+    - {x: 0.2939, y: -0.1406}
+    - {x: 0.3, y: -0.11}
+    - {x: 0.3, y: 0.11}
+    - {x: 0.2939, y: 0.1406}
+    - {x: 0.2766, y: 0.1666}
+    - {x: 0.2506, y: 0.1839}
+    - {x: 0.22, y: 0.19}
+    - {x: -0.22, y: 0.19}
+    - {x: -0.2506, y: 0.1839}
+    - {x: -0.2766, y: 0.1666}
+    - {x: -0.2939, y: 0.1406}
+    - {x: -0.3, y: 0.11}
+    - {x: -0.3, y: -0.11}
+    - {x: -0.2939, y: -0.1406}
+    - {x: -0.2766, y: -0.1666}
+    - {x: -0.2506, y: -0.1839}
+    - {x: -0.22, y: -0.19}
+  radius: 0.19
+  primaryColor: "#2A3C98"
+  secondaryColor: "#CCCCCC"

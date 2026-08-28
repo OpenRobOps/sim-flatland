@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertValid } from '@openrobops/iso21423/schema';
 import {
-  toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal, yawFromQuaternion, parseKeyValue, toCustomData, throttle } from '../src/mapping.js';
+  toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal, yawFromQuaternion, parseKeyValue, toCustomData, throttle,
+  circlePolygon, imrDetails, roundedRectPolygon, FLATLAND_FOOTPRINT } from '../src/mapping.js';
 
 const ts = () => new Date().toISOString();
 
@@ -75,4 +76,38 @@ test('throttle: runs the first call, drops calls inside the window, runs again a
     Date.now = realNow;
   }
   assert.deepEqual(calls, ['a', 'd']);
+});
+
+test('imrDetails is a spec-valid IMR identity with a 16-point footprint of the 0.22 m body', () => {
+  const d = imrDetails({ uuid: '7b1a9c3e-1111-4222-8333-444455556666', version: '1.2.3' });
+  assert.equal(d.imrModel, 'flatland-nav2');
+  assert.equal(d.imrSerialNumber, '7b1a9c3e-1111-4222-8333-444455556666');
+  assert.deepEqual(d.imrFootprint, FLATLAND_FOOTPRINT);
+  assert.deepEqual(d.imrWorkingArea, d.imrFootprint);
+  assert.equal(d.imrHeight, 0.4);
+  assert.deepEqual(d.softwareVersions, [{ moduleName: 'iso-agent', moduleVersion: '1.2.3' }]);
+  // The compiled schema's entityIdentity.details is `type: "object"` (unconstrained), so it won't
+  // catch a wrong ImrDetails field name — assert moduleName/moduleVersion (SoftwareVersion, above)
+  // and the other field names explicitly instead of relying on assertValid for them.
+  assertValid('entityIdentity', {
+    id: '7b1a9c3e-1111-4222-8333-444455556666', timestamp: ts(), entityType: 'IMR', manufacturerName: 'x',
+    capabilities: { provides: [], accepts: { requests: [] } }, details: d,
+  });
+});
+
+test('circlePolygon: n points evenly spaced on the given radius', () => {
+  const pts = circlePolygon(1, 4);
+  assert.equal(pts.length, 4);
+  assert.deepEqual(pts[0], { x: 1, y: 0 });
+  assert.ok(Math.abs(pts[1].x) < 1e-3 && Math.abs(pts[1].y - 1) < 1e-3);
+});
+
+test('roundedRectPolygon spans the requested length/width and stays inside the box', () => {
+  const pts = roundedRectPolygon(0.60, 0.38, 0.08);
+  assert.equal(pts.length, 20);
+  const xs = pts.map((p) => p.x); const ys = pts.map((p) => p.y);
+  assert.equal(Math.max(...xs), 0.3); assert.equal(Math.min(...xs), -0.3);
+  assert.equal(Math.max(...ys), 0.19); assert.equal(Math.min(...ys), -0.19);
+  // a corner point sits strictly inside the sharp-cornered box
+  assert.ok(pts.some((p) => Math.abs(p.x) > 0.22 && Math.abs(p.y) > 0.11 && Math.abs(p.x) < 0.3 && Math.abs(p.y) < 0.19));
 });
