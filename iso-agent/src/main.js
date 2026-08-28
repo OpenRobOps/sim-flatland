@@ -6,7 +6,8 @@ import { createRequire } from 'node:module';
 import { Iso21423Client, registerExtensionResource } from '@openrobops/iso21423';
 import {
   toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal,
-  parseKeyValue, toCustomData, CUSTOM_DATA_RESOURCE, CUSTOM_DATA_RESOURCE_CONFIG, throttle, imrDetails } from './mapping.js';
+  parseKeyValue, toCustomData, CUSTOM_DATA_RESOURCE, CUSTOM_DATA_RESOURCE_CONFIG, throttle, imrDetails,
+  toStampedPoints, planKey } from './mapping.js';
 
 // process.env.npm_package_version is only set when started via `npm run`; the Dockerfile's
 // `CMD ["node", "src/main.js"]` bypasses npm, so read the version straight from package.json.
@@ -23,6 +24,7 @@ const ORO_URL = env('ORO_URL').replace(/\/$/, '');
 const ORO_API_KEY = env('ORO_API_KEY');
 const ROSBRIDGE_URL = env('ROSBRIDGE_URL', 'ws://localhost:9090');
 const ODOM_HZ = Number(env('ISO_ODOMETRY_HZ', '2'));
+const LOCAL_TRAJECTORY_HZ = Number(env('ISO_LOCAL_TRAJECTORY_HZ', '2'));
 // nav2 streams NavigateToPose feedback several times a second; each ctx.progress() becomes an ISO
 // request status publish, so cap the rate the fleet manager sees.
 const PROGRESS_MIN_MS = Number(env('ISO_PROGRESS_MIN_MS', '2000'));
@@ -58,7 +60,7 @@ async function main() {
     entityUuid: ENTITY_UUID, entityType: 'IMR', manufacturerName: 'OpenRobOps flatland',
     details: imrDetails({ uuid: ENTITY_UUID, version: AGENT_VERSION }),
     capabilities: {
-      provides: ['status', 'odometry', 'batteryStatus', CUSTOM_DATA_RESOURCE],
+      provides: ['status', 'odometry', 'batteryStatus', CUSTOM_DATA_RESOURCE, 'globalPlan', 'localTrajectory'],
       // `customCommand` is OpenRobOps' vendor action type: passthrough of PublishToTopic actions.
       accepts: ['move', 'dock', 'cancelRequest', 'customCommand'],
     },
@@ -83,6 +85,21 @@ async function main() {
     imr.publishBatteryStatus(toBatteryStatus(m)).catch((e) => log('battery publish failed', e.message));
     refreshStatus();
   });
+
+  // Planned paths: the agent skips republishing the global plan when it hasn't changed (positions
+  // only; timestamps are ignored, since nav2 restamps every point to "now" even for an unchanged
+  // plan, so the SDK's own dedupe never fires); the local trajectory is a display aid, so 2 Hz is
+  // plenty.
+  let lastPlanKey = null;
+  sub('/plan', 'nav_msgs/msg/Path', (m) => {
+    const key = planKey(m);
+    if (key === lastPlanKey) return;
+    lastPlanKey = key;
+    imr.publishGlobalPlan({ globalPlan: toStampedPoints(CCS_ID, m) }).catch((e) => log('globalPlan publish failed', e.message));
+  });
+  sub('/local_plan', 'nav_msgs/msg/Path', throttle((m) => {
+    imr.publishLocalTrajectory({ points: toStampedPoints(CCS_ID, m) }).catch((e) => log('localTrajectory publish failed', e.message));
+  }, 1000 / LOCAL_TRAJECTORY_HZ));
 
   // ---- /inorbit/custom_data "key=value" lines -> customData extension resource, batched per 500 ms ----
   let pendingKv = null;

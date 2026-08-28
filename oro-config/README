@@ -18,6 +18,10 @@ Apply it with either profile — for the ISO profile it is the only map the robo
 rectangle enlarged to 0.60 x 0.38 m, rounded corners) so the Navigation widget draws the robot's real outline instead of the default
 ring. ISO robots also report theirs through the identity's `imrFootprint`; config overrides it.
 
+`paths.yaml` (profile-independent) sets the fleet-wide `RobotPath` styling for nav2's planned
+paths: `"0"` (global plan) and `"1"` (local trajectory). The ISO agent publishes these as the
+`globalPlan`/`localTrajectory` resources; `"0"` also styles the ros2 profile's `/plan`.
+
 Dashboards, data sources, statuses and incidents use the same ids in both profiles, so switching
 profiles overwrites them in place. Objects that exist only in `ros2/` (actions, ModuleStates,
 `message`/`navigationActivity`/`nav2Health`) are left behind when switching to `iso/`; clear them
@@ -66,4 +70,5 @@ inorbit apply -f ros2/config.yaml                                    # InOrbit R
 inorbit apply -f iso/config.yaml && inorbit apply -f iso/iso-robot.yaml   # ISO 21423 agent
 inorbit apply -f maps.yaml                                           # shared map, either profile
 inorbit apply -f footprint.yaml                                      # fleet footprint, either profile
+inorbit apply -f paths.yaml                                          # fleet path styling, either profile
 ```

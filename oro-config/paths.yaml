@@ -1,0 +1,31 @@
+# Robot path styling for the flatland simulation, applied fleet-wide (metadata.id: system). Path
+# "0" styles nav2's global plan: the ISO agent publishes it as the ISO `globalPlan` resource
+# (iso-agent/src/main.js /plan subscription); the ros2 profile's InOrbit agent already surfaces
+# the equivalent /plan topic under the same path id, so this entry styles both profiles. Path "1"
+# styles the ISO agent's `localTrajectory` resource (/local_plan), dashed to read as a live,
+# short-lived trace rather than the retained global plan. Profile-independent:
+#
+#   inorbit apply -f oro-config/paths.yaml
+#
+# Field set is the RobotPath spec's allowed style keys (app/imports/shared/robotPath.js
+# PATH_STYLE_FIELDS): label, pointColor (1-3 #rrggbb), lineColor (1-2 #rrggbb), pointWidth,
+# lineWidth, isDashed, shouldPersist.
+apiVersion: v0.1
+kind: RobotPath
+metadata:
+  id: system
+  scope: ""
+spec:
+  paths:
+    "0":
+      label: Global plan
+      pointColor: ["#2A3C98", "#7F8CC7", "#C7CCE5"]
+      lineColor: ["#2A3C98", "#7F8CC7"]
+      pointWidth: 3
+      lineWidth: 2
+      isDashed: false
+    "1":
+      label: Local trajectory
+      lineColor: ["#B4622A", "#D9A47F"]
+      lineWidth: 3
+      isDashed: true
