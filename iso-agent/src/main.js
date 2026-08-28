@@ -7,7 +7,7 @@ import { Iso21423Client, registerExtensionResource } from '@openrobops/iso21423'
 import {
   toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal,
   parseKeyValue, toCustomData, CUSTOM_DATA_RESOURCE, CUSTOM_DATA_RESOURCE_CONFIG, throttle, imrDetails,
-  toStampedPoints } from './mapping.js';
+  toStampedPoints, planKey } from './mapping.js';
 
 // process.env.npm_package_version is only set when started via `npm run`; the Dockerfile's
 // `CMD ["node", "src/main.js"]` bypasses npm, so read the version straight from package.json.
@@ -86,9 +86,15 @@ async function main() {
     refreshStatus();
   });
 
-  // Planned paths: the global plan is retained + deduped by the SDK (republishing an unchanged
-  // plan is free); the local trajectory is a display aid, so 2 Hz is plenty.
+  // Planned paths: the agent skips republishing the global plan when it hasn't changed (positions
+  // only; timestamps are ignored, since nav2 restamps every point to "now" even for an unchanged
+  // plan, so the SDK's own dedupe never fires); the local trajectory is a display aid, so 2 Hz is
+  // plenty.
+  let lastPlanKey = null;
   sub('/plan', 'nav_msgs/msg/Path', (m) => {
+    const key = planKey(m);
+    if (key === lastPlanKey) return;
+    lastPlanKey = key;
     imr.publishGlobalPlan({ globalPlan: toStampedPoints(CCS_ID, m) }).catch((e) => log('globalPlan publish failed', e.message));
   });
   sub('/local_plan', 'nav_msgs/msg/Path', throttle((m) => {

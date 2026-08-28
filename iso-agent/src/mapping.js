@@ -145,6 +145,20 @@ export function toStampedPoints(ccsId, pathMsg) {
   }));
 }
 
+const round3 = (v) => Math.round(v * 1000) / 1000;
+
+/**
+ * Dedupe key for a nav_msgs/Path plan: the rounded (x, y) positions only, ignoring per-pose
+ * timestamps and the header. nav2 restamps every point with `nowTimestamp()` on every publish,
+ * even when the plan itself hasn't changed, so a key derived from `toStampedPoints` output would
+ * never repeat. Rounded to 3 decimals to ignore floating-point jitter between otherwise-identical
+ * plans.
+ */
+export function planKey(pathMsg) {
+  return JSON.stringify(
+    ((pathMsg && pathMsg.poses) || []).map((p) => [round3(p.pose.position.x), round3(p.pose.position.y)]));
+}
+
 /**
  * Wraps `fn` so it runs at most once per `ms` milliseconds; calls in between are dropped
  * (latest-value semantics are not needed: the final outcome is reported separately).

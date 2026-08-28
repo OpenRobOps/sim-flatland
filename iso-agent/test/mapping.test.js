@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { assertValid } from '@openrobops/iso21423/schema';
 import {
   toOdometry, toBatteryStatus, deriveStates, goalActiveFrom, toNavGoal, yawFromQuaternion, parseKeyValue, toCustomData, throttle,
-  circlePolygon, imrDetails, roundedRectPolygon, FLATLAND_FOOTPRINT, toStampedPoints } from '../src/mapping.js';
+  circlePolygon, imrDetails, roundedRectPolygon, FLATLAND_FOOTPRINT, toStampedPoints, planKey } from '../src/mapping.js';
 
 const ts = () => new Date().toISOString();
 
@@ -115,6 +115,19 @@ test('toStampedPoints maps nav_msgs/Path poses to stamped CCS points, validating
   assertValid('globalPlan', { timestamp: pts[0].timestamp, globalPlan: pts });
   assertValid('localTrajectory', { timestamp: pts[0].timestamp, localTrajectory: pts });
   assert.deepEqual(toStampedPoints(ccsId, { poses: [] }), []);
+});
+
+test('planKey: same positions -> same key, a moved point -> different key, empty poses -> key for []', () => {
+  const path = (points) => ({ poses: points.map(([x, y]) => ({ pose: { position: { x, y, z: 0 } } })) });
+  const a = path([[1, 2], [1.5, 2]]);
+  const b = path([[1, 2], [1.5, 2]]);
+  const moved = path([[1, 2], [1.5, 2.1]]);
+  assert.equal(planKey(a), planKey(b));
+  assert.notEqual(planKey(a), planKey(moved));
+  assert.equal(planKey({ poses: [] }), JSON.stringify([]));
+  // jitter under 3 decimals is ignored
+  const jittered = path([[1.0001, 2], [1.5, 2]]);
+  assert.equal(planKey(a), planKey(jittered));
 });
 
 test('roundedRectPolygon spans the requested length/width and stays inside the box', () => {
