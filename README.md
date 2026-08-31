@@ -321,7 +321,7 @@ docker compose exec flatland-nav2 ros2 topic echo /image_raw --field encoding --
 
 *ROS2 agent mode — see [Connectivity modes](#connectivity-modes).*
 
-An [InOrbit ROS2 agent](https://www.inorbit.ai/) runs as a sidecar container (`inorbitai/agent:ros-jazzy-4.33.0`) alongside the simulation, connecting the simulated robot to your OpenRobOps or InOrbit instance. A second lightweight `busybox` container tails the agent log into the main `docker compose` output for easier debugging. Both services are part of the `agent` Compose profile, enabled by default via `.env`.
+An [InOrbit ROS2 agent](https://www.inorbit.ai/) runs as a sidecar container (`inorbitai/agent:ros-jazzy-4.36.0`) alongside the simulation, connecting the simulated robot to your OpenRobOps or InOrbit instance. A second lightweight `busybox` container tails the agent log into the main `docker compose` output for easier debugging. Both services are part of the `agent` Compose profile, enabled by default via `.env`.
 
 ### Configuration
 
