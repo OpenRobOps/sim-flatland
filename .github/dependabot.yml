@@ -1,5 +1,6 @@
 # Dependabot version updates: monthly, grouped so each ecosystem yields one PR for
-# minor and patch bumps; major bumps come as separate PRs.
+# minor and patch bumps. Major bumps are ignored for packages and base images (they are
+# taken deliberately by hand); GitHub Actions majors are still proposed.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -17,11 +18,20 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directory: /iso-agent
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
