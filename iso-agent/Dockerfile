@@ -2,7 +2,7 @@
 # built from a second build context named `iso21423` (the SDK repo root):
 #   docker compose build iso-agent            # compose passes ../../iso21423 (sibling checkout)
 #   docker build --build-context iso21423=/path/to/iso21423 iso-agent
-FROM node:22-slim
+FROM node:25-slim
 WORKDIR /iso21423/ts-sdk
 COPY --from=iso21423 ts-sdk/package.json ts-sdk/package-lock.json ts-sdk/tsconfig.json ts-sdk/tsup.config.ts ./
 COPY --from=iso21423 ts-sdk/src ./src
