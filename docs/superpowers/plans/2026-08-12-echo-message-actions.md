@@ -53,7 +53,7 @@ and add the callback (next to the other `_on_*` methods):
 - [ ] **Step 2: Rebuild and start the sim**
 
 ```bash
-cd /home/herchu/inorbit/flatland
+cd ../flatland
 docker compose build flatland-nav2
 docker compose up -d
 ```
@@ -89,7 +89,7 @@ Expected: NO `not-an-echo` line appears on the `/inorbit/custom_data` watcher (b
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/herchu/inorbit/flatland
+cd ../flatland
 git add republisher/republisher/republisher_node.py
 git commit -m "republisher: echo 'echo=' custom commands back as custom_data"
 ```
@@ -250,7 +250,7 @@ In the `fleet` DashboardDefinition, `fleetStatus` widget, extend `statuses`:
 - [ ] **Step 4: Apply the config**
 
 ```bash
-cd /home/herchu/inorbit/flatland/oro-config
+cd ../flatland/oro-config
 source setup-oro-local.sh
 inorbit apply -f config.yaml
 ```
@@ -274,7 +274,7 @@ Expected: all seven observations hold. If a step fails, stop and report which on
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /home/herchu/inorbit/flatland
+cd ../flatland
 git add oro-config/config.yaml
 git commit -m "oro-config: Message actions with echo status + incident"
 ```
@@ -316,7 +316,7 @@ Additionally, the robot reports key-value pairs as custom data elements, includi
 - [ ] **Step 2: Regenerate config.yaml and re-apply**
 
 ```bash
-cd /home/herchu/inorbit/flatland/oro-config
+cd ../flatland/oro-config
 node embed-welcome-content.mjs
 git diff config.yaml   # expect ONLY the welcome dashboard text to change
 source setup-oro-local.sh
@@ -332,7 +332,7 @@ Open the Welcome dashboard in ORO: the Action widget lists the Message group and
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /home/herchu/inorbit/flatland
+cd ../flatland
 git add oro-config/welcome-action.md oro-config/config.yaml
 git commit -m "oro-config: document Message actions in welcome dashboard"
 ```
