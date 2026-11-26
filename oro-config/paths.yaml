@@ -1,8 +1,8 @@
 # Robot path styling for the flatland simulation, applied fleet-wide (metadata.id: system). Path
-# "0" styles nav2's global plan: the ISO agent publishes it as the ISO `globalPlan` resource
-# (iso-agent/src/main.js /plan subscription); the ros2 profile's InOrbit agent already surfaces
+# "0" styles nav2's global plan: the ISO connector publishes it as the ISO `globalPlan` resource
+# (connector source `globalPlan`, /plan); the ros2 profile's InOrbit agent already surfaces
 # the equivalent /plan topic under the same path id, so this entry styles both profiles. Path "1"
-# styles the ISO agent's `localTrajectory` resource (/local_plan), dashed to read as a live,
+# styles the ISO connector's `localTrajectory` resource (/local_plan), dashed to read as a live,
 # short-lived trace rather than the retained global plan. Profile-independent:
 #
 #   inorbit apply -f oro-config/paths.yaml

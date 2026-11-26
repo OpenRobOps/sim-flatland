@@ -7,7 +7,7 @@
 #   inorbit apply -f oro-config/footprint.yaml
 #
 # ISO robots also report the same outline in the identity's imrFootprint (see
-# iso-agent/src/mapping.js FLATLAND_FOOTPRINT); a configured RobotFootprint (system or per-robot)
+# config/iso21423_connector.yaml identity.footprint); a configured RobotFootprint (system or per-robot)
 # overrides it. Same spec shape as InOrbit's RobotFootprint.
 apiVersion: v0.1
 kind: RobotFootprint

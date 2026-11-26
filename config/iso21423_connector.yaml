@@ -1,0 +1,33 @@
+# iso21423_ros connector config for the flatland sim (profile `iso-agent`, service `iso-connector`).
+# entity_uuid, ccs.id and oro.url are not set here: docker-compose.yml passes them from
+# local/iso-agent.env.sh (ISO_ENTITY_UUID, ISO_CCS_ID, ORO_URL) as `-p` overrides.
+# ORO_API_KEY is read by the connector straight from the environment.
+iso21423_connector:
+  ros__parameters:
+    use_sim_time: true              # flatland publishes /clock; without it odometry is LOST
+    manufacturer_name: OpenRobOps
+    credentials_provider: openrobops
+    identity:
+      model: flatland-nav2
+      serial_number: flatland-sim
+      height: 0.4
+      # 0.60 x 0.38 m rounded rectangle (0.08 m corners, 20 points): nav2's 0.44 x 0.28 m costmap
+      # footprint enlarged so it reads as a robot at fleet zoom levels.
+      footprint: [0.22, -0.19, 0.2506, -0.1839, 0.2766, -0.1666, 0.2939, -0.1406, 0.3, -0.11,
+                  0.3, 0.11, 0.2939, 0.1406, 0.2766, 0.1666, 0.2506, 0.1839, 0.22, 0.19,
+                  -0.22, 0.19, -0.2506, 0.1839, -0.2766, 0.1666, -0.2939, 0.1406, -0.3, 0.11,
+                  -0.3, -0.11, -0.2939, -0.1406, -0.2766, -0.1666, -0.2506, -0.1839, -0.22, -0.19]
+    sources:
+      odometry: {enabled: true}
+      batteryStatus: {enabled: true}
+      globalPlan: {enabled: true}
+      localTrajectory: {enabled: true}
+    extensions:
+      customData: {enabled: true}   # /inorbit/custom_data key-values -> ORO customData
+    handlers:
+      move: {enabled: true}
+      dock: {enabled: true, mode: navigate}   # flatland has no docking server
+      undock: {enabled: false}
+      pauseImr: {enabled: true}
+      resumeImr: {enabled: true}
+      customCommand: {class: "iso21423_ros.oro:CustomCommandHandler"}   # -> /inorbit/custom_command

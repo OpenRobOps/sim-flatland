@@ -184,7 +184,7 @@ def generate_launch_description():
         ],
     )
 
-    # rosbridge websocket on :9090 — used by the ISO 21423 agent sidecar (iso-agent/)
+    # rosbridge websocket on :9090 — for external tools and web clients (not used by the ISO 21423 connector, which talks ROS 2)
     rosbridge = Node(
         package='rosbridge_server',
         executable='rosbridge_websocket',
