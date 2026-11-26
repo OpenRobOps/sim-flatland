@@ -1,6 +1,6 @@
 ### Action
 
-The ISO 21423 agent accepts ISO `move` and `cancelRequest` requests, which OpenRobOps sends from the built-in navigation actions:
+The ISO 21423 connector accepts ISO `move` and `cancelRequest` requests, which OpenRobOps sends from the built-in navigation actions:
 
 [NAVIGATE TO](/dashboards/navigation): Sends the robot to a point picked on the map (ISO `move`)  
 [CANCEL NAVIGATION](/dashboards/robot): Cancels the current navigation (ISO `cancelRequest`)

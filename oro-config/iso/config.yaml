@@ -1,6 +1,6 @@
 #######################################################################################
 ## OpenRobOps configuration for the flatland simulation driven by the ISO 21423 agent
-## (iso-agent/). Apply this folder INSTEAD of ../ros2:  inorbit apply -f oro-config/iso
+## (the iso21423_ros connector). Apply this folder INSTEAD of ../ros2:  inorbit apply -f oro-config/iso
 ## Object ids are shared with ../ros2 so switching profiles overwrites the same dashboards.
 #######################################################################################
 

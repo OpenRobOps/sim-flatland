@@ -1,6 +1,6 @@
 # Flatland Nav2 Docker Environment
 
-Docker environment for running the [avidbots/flatland](https://github.com/avidbots/flatland) 2D simulator with the full Nav2 navigation stack on ROS2 Jazzy — a complete simulated AMR (map, localization, navigation, battery, camera, diagnostics) for developing and testing [OpenRobOps](https://github.com/OpenRobOps/oro) without hardware. It runs in one of three modes: **standalone** (ROS 2 only, no fleet manager), **ROS2 agent** (the InOrbit ROS2 agent connects it to OpenRobOps or InOrbit over their MQTT protocol), or **ISO 21423** (an [ISO 21423](https://github.com/OpenRobOps/iso21423) agent connects it to OpenRobOps as a standards-native robot). See [Connectivity modes](#connectivity-modes).
+Docker environment for running the [avidbots/flatland](https://github.com/avidbots/flatland) 2D simulator with the full Nav2 navigation stack on ROS2 Jazzy — a complete simulated AMR (map, localization, navigation, battery, camera, diagnostics) for developing and testing [OpenRobOps](https://github.com/OpenRobOps/oro) without hardware. It runs in one of three modes: **standalone** (ROS 2 only, no fleet manager), **ROS2 agent** (the InOrbit ROS2 agent connects it to OpenRobOps or InOrbit over their MQTT protocol), or **ISO 21423** (the [`iso21423_ros`](https://github.com/OpenRobOps/iso21423_ros) connector connects it to OpenRobOps as a standards-native robot). See [Connectivity modes](#connectivity-modes).
 
 ## What's Included
 
@@ -10,7 +10,7 @@ Docker environment for running the [avidbots/flatland](https://github.com/avidbo
 - **Rviz2** - Visualization with preconfigured layout
 - **Battery Simulation** - Velocity-based battery drain plugin with `sensor_msgs/BatteryState` output
 - **ROS2 Agent** - InOrbit ROS2 agent sidecar connecting the simulated robot to OpenRobOps/InOrbit (optional, default on)
-- **ISO 21423 Agent** - Node.js sidecar connecting the simulated robot to OpenRobOps as an ISO 21423 robot (optional, alternative to the ROS2 agent)
+- **ISO 21423 Connector** - the `iso21423_ros` ROS 2 node connecting the simulated robot to OpenRobOps as an ISO 21423 robot (optional, alternative to the ROS2 agent)
 - **ROS Diagnostics** - Health monitoring of sensors, battery, TF, and Nav2 lifecycle published on `/diagnostics` and grouped on `/diagnostics_agg`
 - **Sample world** - 20x20m multi-room office with a differential-drive robot (laser, odometry, battery)
 
@@ -24,7 +24,7 @@ The simulation itself is the same in every mode; what changes is the sidecar tha
 |------|-----------|------------|-------------------|
 | **Standalone** | Simulation + Nav2 (+ rviz). No fleet manager. | `COMPOSE_PROFILES= docker compose up` | none |
 | **ROS2 agent** (default) | Simulation + [InOrbit ROS2 agent](#inorbit-agent) sidecar speaking the InOrbit/OpenRobOps MQTT protocol. Full feature set: pose, map, laser, costmaps, camera, diagnostics, key-values, actions. | `docker compose up` (`.env` sets `COMPOSE_PROFILES=agent`) | `inorbit apply -f oro-config/ros2/config.yaml` |
-| **ISO 21423** | Simulation + [ISO 21423 agent](#iso-21423-agent) sidecar speaking the ISO 21423 standard (MQTT + JSON) to OpenRobOps' ISO robots ingestion. Status, pose, speed, battery, key-values, navigation/dock/custom commands. | `COMPOSE_PROFILES=iso-agent docker compose up` | `inorbit apply -f oro-config/iso/config.yaml` + `iso/iso-robot.yaml` |
+| **ISO 21423** | Simulation + [ISO 21423 connector](#iso-21423-connector) speaking the ISO 21423 standard (MQTT + JSON) to OpenRobOps' ISO robots ingestion. Status, pose, speed, battery, key-values, navigation/dock/custom commands. | `COMPOSE_PROFILES=iso-agent docker compose up` | `inorbit apply -f oro-config/iso/config.yaml` + `iso/iso-robot.yaml` |
 
 Run one agent at a time: the two profiles register the same robot with the same OpenRobOps instance in different ways, and OpenRobOps itself is either in wire (ROS2 agent) or ISO mode per deployment. The `oro-config/` profiles share object ids, so switching modes and re-applying the other profile overwrites dashboards and data sources in place (see `oro-config/README`).
 
@@ -344,18 +344,20 @@ The agent is opt-out. To skip both the agent and its log tail:
 COMPOSE_PROFILES= docker compose up
 ```
 
-## ISO 21423 Agent
+## ISO 21423 Connector
 
 *ISO 21423 mode — see [Connectivity modes](#connectivity-modes). The OpenRobOps side is documented in the [ISO 21423 section of the OpenRobOps docs](https://github.com/OpenRobOps/oro/blob/main/website/docs/iso21423/overview.md).*
 
-An alternative to the InOrbit agent: a small Node.js sidecar (`iso-agent/`, image `ghcr.io/openrobops/flatland-iso-agent`) that speaks [ISO 21423](https://github.com/OpenRobOps/iso21423) directly to OpenRobOps' `isoRobots` ingestion. It reads the simulation through rosbridge (`ws://localhost:9090`, launched with the sim) and publishes ISO `status`, `odometry` and `batteryStatus`. Requests it accepts: ISO `move`/`cancelRequest` (ORO navigation) and the native ISO `dock` (ORO's Dock actions) become nav2 `NavigateToPose` goals; OpenRobOps' vendor action `customCommand` (any other `PublishToTopic` action, e.g. the battery hacks) is republished on `/inorbit/custom_command`, exactly as the InOrbit agent did. The sim's `/inorbit/custom_data` key-values (`battery_*`, `estimated_time_remaining`, `echo`) are forwarded as OpenRobOps' `customData` extension resource (ISO 21423 leaves the resource catalog open), so `keyValue` data sources and the Message actions work as with the InOrbit agent. Not covered (no ISO equivalent or no ORO ingestion yet): map, camera, laser, diagnostics tree.
+An alternative to the InOrbit agent: the [`iso21423_ros`](https://github.com/OpenRobOps/iso21423_ros) connector (image `ghcr.io/openrobops/iso21423-ros:jazzy`, service `iso-connector`) speaks [ISO 21423](https://github.com/OpenRobOps/iso21423) directly to OpenRobOps' `isoRobots` ingestion. It is a ROS 2 node in the simulation's network (host networking, same `ROS_DOMAIN_ID`) configured by [`config/iso21423_connector.yaml`](config/iso21423_connector.yaml). It publishes ISO `status`, `odometry`, `batteryStatus`, `globalPlan` and `localTrajectory`. Requests it accepts: ISO `move`, `dock`, `pauseImr`/`resumeImr` and `cancelRequest`; `dock` navigates to the dock location (`handlers.dock.mode: navigate`, the sim has no docking server). OpenRobOps' vendor action `customCommand` (any other `PublishToTopic` action, e.g. the battery hacks) is republished on `/inorbit/custom_command`, and the sim's `/inorbit/custom_data` key-values (`battery_*`, `estimated_time_remaining`, `echo`) are forwarded as OpenRobOps' `customData` extension resource, so `keyValue` data sources and the Message actions work as with the InOrbit agent. Both are the connector's opt-in OpenRobOps extras. Not covered (no ISO equivalent or no ORO ingestion yet): map, camera, laser, diagnostics tree.
 
-Run it *instead of* the InOrbit agent:
+Run it *instead of* the InOrbit agent. The connector and library are built from sibling checkouts (`../iso21423_ros`, `../iso21423`):
 
 ```bash
 cp local/iso-agent.env.sh.example local/iso-agent.env.sh   # set ORO_API_KEY (a robotApiKeys value), ORO_URL, the UUIDs
-COMPOSE_PROFILES=iso-agent docker compose up
+COMPOSE_PROFILES=iso-agent docker compose up --build
 ```
+
+How the settings reach the connector: `local/iso-agent.env.sh` keeps its keys. Compose loads it as the container environment; `ISO_ENTITY_UUID`, `ISO_CCS_ID` and `ORO_URL` are passed as `-p` parameter overrides on the connector's command line (`entity_uuid`, `ccs.id`, `oro.url`), and the connector reads `ORO_API_KEY` from the environment when `oro.api_key_file` is empty. No key file is needed, and the key is never logged.
 
 ### OpenRobOps setup
 
@@ -367,16 +369,36 @@ COMPOSE_PROFILES=iso-agent docker compose up
      { "map": { "x": 0,  "y": 10 }, "ccs": { "x": 0,  "y": 10 } } ] } }
    ```
    `ccs.id` must equal `ISO_CCS_ID` in `local/iso-agent.env.sh`; poses are dropped by ORO otherwise.
-2. Apply the ISO profile of the ORO config: `inorbit apply -f oro-config/iso/config.yaml` then `inorbit apply -f oro-config/iso/iso-robot.yaml` (data sources, dashboards, and `iso-robot.yaml`, which admits the robot — its `metadata.id` must equal `ISO_ENTITY_UUID`). Apply `oro-config/ros2/config.yaml` instead when running the InOrbit agent; see `oro-config/README`. Until this is done the agent logs `iso_mqtt_config -> 403` and retries every 10 s.
+2. Apply the ISO profile of the ORO config: `inorbit apply -f oro-config/iso/config.yaml` then `inorbit apply -f oro-config/iso/iso-robot.yaml` (data sources, dashboards, and `iso-robot.yaml`, which admits the robot — its `metadata.id` must equal `ISO_ENTITY_UUID`). Apply `oro-config/ros2/config.yaml` instead when running the InOrbit agent; see `oro-config/README`. Until this is done the connector logs `iso_mqtt_config -> 403` and retries every 10 s.
 
-The agent then fetches its own broker credentials from `POST /iso_mqtt_config` with the api key — no MQTT settings live on the robot side.
+The connector then fetches its own broker credentials from `POST /iso_mqtt_config` with the api key — no MQTT settings live on the robot side.
 
 ### Development
 
 ```bash
-cd iso-agent && npm install && npm test     # expects the SDK repo checked out at ../../iso21423
-docker compose build iso-agent              # same sibling checkout is passed as a build context
+docker compose build iso-connector     # builds ../iso21423_ros with ../iso21423 as the `iso21423` build context
 ```
+
+Connector tests live in the `iso21423_ros` repo (`scripts/test.sh`, plus an end-to-end sim test against this image).
+
+Parity with the old Node.js agent (`iso-agent/`, removed), mapped to `config/iso21423_connector.yaml`:
+
+| Old agent feature | Connector config |
+|---|---|
+| status, `MODE_AUTO` | built in (`mode`); also `LOST`, `CHARGING`, `LOW_BATTERY`, `PAUSED`, `DOCKING` |
+| odometry | `sources.odometry` |
+| battery | `sources.batteryStatus` |
+| `globalPlan`, `localTrajectory` | `sources.globalPlan`, `sources.localTrajectory` |
+| `customData` (`/inorbit/custom_data`) | `extensions.customData` |
+| `move` (+ `cancelRequest`) | `handlers.move` (`cancelRequest` is built in) |
+| `dock` as a navigation goal | `handlers.dock` with `mode: navigate` |
+| `customCommand` (`/inorbit/custom_command`) | `handlers.customCommand` |
+| fetched broker credentials (`/iso_mqtt_config`) | `credentials_provider: openrobops`, `ORO_API_KEY` from env |
+| identity footprint (0.60 x 0.38 m rounded rectangle, 20 points), model, height | `identity.*` |
+| new: `pauseImr`/`resumeImr` | `handlers.pauseImr`, `handlers.resumeImr` |
+| sim clock | `use_sim_time: true` (required, otherwise odometry is `LOST`) |
+
+`cancelRequest` is handled by the connector library but, unlike the old agent, is no longer advertised in `accepts`.
 
 ## Diagnostics
 
@@ -434,7 +456,7 @@ Comment out the `diagnostics_watcher` and `diagnostics_aggregator` `Node` entrie
 flatland/
   Dockerfile                        # Multi-layer build: Box2D + flatland + Nav2
   entrypoint.sh                     # Mode-switching entrypoint with display auto-detection
-  docker-compose.yml                # X11/Wayland forwarding, GPU, host networking, agent sidecars (profiles: agent, iso-agent)
+  docker-compose.yml                # X11/Wayland forwarding, GPU, host networking, agent sidecars (profiles: agent, iso-agent -> iso-connector)
   .env                              # COMPOSE_PROFILES=agent (default profiles for docker compose)
   oro-config/
     ros2/config.yaml                # OpenRobOps config for ROS2 agent mode (data sources, dashboards, actions, ...)
@@ -444,13 +466,13 @@ flatland/
     nav2_params.yaml                # Nav2 parameters (DWB controller, NavFn planner)
     flatland_rviz.rviz              # Rviz2 layout (map, scan, TF, costmaps, Nav2 panel, battery)
     diagnostics_aggregator.yaml     # Analyzer groups for diagnostic_aggregator
+    iso21423_connector.yaml         # iso21423_ros connector parameters (ISO 21423 mode)
   launch/
     flatland_nav2.launch.py         # Unified launch file
   plugins/
     battery.h                       # Battery simulation plugin header
     battery.cpp                     # Battery simulation plugin implementation
   republisher/                      # Project ROS2 package - InOrbit custom_data bridge
-  iso-agent/                        # ISO 21423 agent sidecar (Node.js, own image)
   diagnostics_watcher/              # Project ROS2 package - /diagnostics publisher
   maps/
     sample_map.yaml                 # Map metadata
@@ -466,7 +488,7 @@ flatland/
   local/                            # Bind-mounted into agent container (gitignored)
     agent.env.sh                    # InOrbit agent credentials (INORBIT_KEY, INORBIT_URL, ...) - gitignored
     agent.env.sh.example            # Template for agent.env.sh
-    iso-agent.env.sh.example        # Template for the ISO 21423 agent (ORO_API_KEY, ORO_URL, UUIDs)
+    iso-agent.env.sh.example        # Template for the ISO 21423 connector (ORO_API_KEY, ORO_URL, UUIDs)
 ```
 
 ## Updating the flatland patches

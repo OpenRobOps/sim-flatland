@@ -10,26 +10,8 @@ updates:
     groups:
       actions:
         patterns: ["*"]
-  - package-ecosystem: npm
-    directory: /iso-agent
-    schedule:
-      interval: monthly
-    open-pull-requests-limit: 5
-    groups:
-      minor-and-patch:
-        update-types: ["minor", "patch"]
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directory: /
-    schedule:
-      interval: monthly
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-  - package-ecosystem: docker
-    directory: /iso-agent
     schedule:
       interval: monthly
     ignore:

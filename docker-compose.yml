@@ -72,20 +72,41 @@ services:
       - ./local:/root/.inorbit/local/
       - ./local/agent.env.sh:/root/.inorbit/local/agent.env.sh
 
-  # ISO 21423 agent (alternative to the InOrbit ROS2 agent above; see README "ISO 21423 Agent").
-  # Talks to the simulation through rosbridge (ws://localhost:9090) and to OpenRobOps over ISO 21423/MQTT.
+  # ISO 21423 connector (alternative to the InOrbit ROS2 agent above; see README "ISO 21423 Connector").
+  # Runs the iso21423_ros node against the simulation over ROS 2 (host networking, same ROS_DOMAIN_ID)
+  # and talks to OpenRobOps over ISO 21423/MQTT.
   # Requires local/iso-agent.env.sh. Enable with: COMPOSE_PROFILES=iso-agent docker compose up
-  iso-agent:
+  # ISO_ENTITY_UUID, ISO_CCS_ID and ORO_URL become parameter overrides on the command line;
+  # ORO_API_KEY is read by the connector from its environment.
+  iso-connector:
     build:
-      context: ./iso-agent
+      context: ../iso21423_ros     # sibling checkout of github.com/OpenRobOps/iso21423_ros
+      dockerfile: docker/Dockerfile
+      target: runtime
+      args:
+        ROS_DISTRO: jazzy
       additional_contexts:
-        iso21423: ../iso21423   # sibling checkout of github.com/OpenRobOps/iso21423 (the SDK)
-    image: ghcr.io/openrobops/flatland-iso-agent:latest
-    container_name: iso_agent
+        iso21423: ../iso21423      # sibling checkout of github.com/OpenRobOps/iso21423 (the library)
+    image: ghcr.io/openrobops/iso21423-ros:jazzy
+    container_name: iso_connector
     profiles: ["iso-agent"]
     restart: always
     network_mode: host
+    ipc: host
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
     env_file: local/iso-agent.env.sh
+    volumes:
+      - ./config/iso21423_connector.yaml:/robot.yaml:ro
+    command:
+      - bash
+      - -c
+      - >-
+        exec ros2 run iso21423_ros iso21423_connector --ros-args
+        --params-file /robot.yaml
+        -p entity_uuid:="$${ISO_ENTITY_UUID:?ISO_ENTITY_UUID is empty or unset (local/iso-agent.env.sh)}"
+        -p ccs.id:="$${ISO_CCS_ID:?ISO_CCS_ID is empty or unset (local/iso-agent.env.sh)}"
+        -p oro.url:="$${ORO_URL:?ORO_URL is empty or unset (local/iso-agent.env.sh)}"
 
   # Tail agent logs from a different container; it's lightweight and it helps debugging in a single docker-compose terminal
   agent-logs:

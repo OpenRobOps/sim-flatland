@@ -27,15 +27,3 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/openrobops/flatland-nav2:latest
-
-      - uses: actions/checkout@v7
-        with:
-          repository: OpenRobOps/iso21423
-          path: iso21423
-
-      - uses: docker/build-push-action@v7
-        with:
-          context: ./iso-agent
-          build-contexts: iso21423=./iso21423
-          push: true
-          tags: ghcr.io/openrobops/flatland-iso-agent:latest
