@@ -104,7 +104,9 @@ services:
       - >-
         exec ros2 run iso21423_ros iso21423_connector --ros-args
         --params-file /robot.yaml
-        -p entity_uuid:="$$ISO_ENTITY_UUID" -p ccs.id:="$$ISO_CCS_ID" -p oro.url:="$$ORO_URL"
+        -p entity_uuid:="$${ISO_ENTITY_UUID:?ISO_ENTITY_UUID is empty or unset (local/iso-agent.env.sh)}"
+        -p ccs.id:="$${ISO_CCS_ID:?ISO_CCS_ID is empty or unset (local/iso-agent.env.sh)}"
+        -p oro.url:="$${ORO_URL:?ORO_URL is empty or unset (local/iso-agent.env.sh)}"
 
   # Tail agent logs from a different container; it's lightweight and it helps debugging in a single docker-compose terminal
   agent-logs:

@@ -398,6 +398,8 @@ Parity with the old Node.js agent (`iso-agent/`, removed), mapped to `config/iso
 | new: `pauseImr`/`resumeImr` | `handlers.pauseImr`, `handlers.resumeImr` |
 | sim clock | `use_sim_time: true` (required, otherwise odometry is `LOST`) |
 
+`cancelRequest` is handled by the connector library but, unlike the old agent, is no longer advertised in `accepts`.
+
 ## Diagnostics
 
 A `diagnostics_watcher` node publishes ROS 2 diagnostics on `/diagnostics`, and a `diagnostic_aggregator` groups them into a tree on `/diagnostics_agg`. Both are launched by default with the rest of the simulation.
